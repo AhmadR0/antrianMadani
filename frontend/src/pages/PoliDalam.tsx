@@ -30,7 +30,7 @@ export default function PoliDalamPage() {
             try {
                 const response = await fetch("http://localhost:8000/tesApi/jadwalAntrian1");
                 const data = await response.json();
-                setDoctorsOnDuty(data); // Data dari controller kamu yang udah benar
+                setDoctorsOnDuty(data); 
             } catch (err) {
                 console.error("Gagal ambil data dokter dari API", err);
             }
