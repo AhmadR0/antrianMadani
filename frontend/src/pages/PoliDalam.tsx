@@ -32,6 +32,12 @@ export default function PoliDalamPage() {
                 <h1 className="text-2xl font-bold text-center text-green-600">Antrian Poliklinik</h1>
 
                 {/* Nomor antrian aktif */}
+                <button 
+         className="p-0 m-0 text-red-300" 
+         onClick={handleClick}
+         >
+             tes 
+         </button>
                 <div className="bg-white rounded-2xl shadow p-6 text-center w-full max-w-md mx-auto flex flex-col justify-center min-h-[172px]">
                     <p className="text-gray-500 mb-2 text-base">Sedang Dilayani</p>
                     <h2 className="text-5xl font-bold text-green-700">{currentQueue.name}</h2>

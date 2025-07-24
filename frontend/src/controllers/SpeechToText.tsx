@@ -11,3 +11,4 @@ export const speakAntrian = (nomor: string, nama: string, tujuan: string) => {
   window.speechSynthesis.cancel(); // Stop yang sedang jalan
   window.speechSynthesis.speak(utterance);
 };
+  
