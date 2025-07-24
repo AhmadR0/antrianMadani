@@ -39,7 +39,7 @@ export default function MainLayout({ children }: Props) {
                     {formarDate(dateTime)}
                 </div>
             </header>
-            <main className='flex-grow text-black p-12 overflow-auto min-h-[calc(100vh-128px)]'>
+            <main className='flex-grow text-black p-8 overflow-auto min-h-[calc(100vh-128px)]'>
                 {children} {/* <-- Ini tempat render isi halaman */}
             </main>
             <footer className='w-full bg-green-500 text-white py-3 px-6 text-sm shadow text-center'>
