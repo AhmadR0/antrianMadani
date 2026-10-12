@@ -5,6 +5,7 @@ import { DAFTAR_POLI, cariPoli, type Poli } from '../config/poli';
 import { bacaPilihanLayar, simpanPilihanLayar } from '../lib/pilihanLayar';
 import HeaderRS from '../components/ui/HeaderRS';
 import LatarMedis from '../components/ui/LatarMedis';
+import KanvasTV from '../components/ui/KanvasTV';
 
 // Dashboard pemilih layar antrian. Dibuka sekali oleh operator di TV.
 // - Kartu besar per poli, bisa dinavigasi dengan tombol panah remote + OK/Enter.
@@ -93,9 +94,10 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="relative min-h-screen w-screen flex flex-col">
+    <KanvasTV>
+    <div className="relative h-full w-full flex flex-col overflow-hidden">
       <LatarMedis />
-      <HeaderRS subjudul="Sistem Antrian Poliklinik" />
+      <HeaderRS judul="RSUD Madani" subjudul="Sistem Antrian Poliklinik" />
 
       <main className="flex-1 px-12 pb-6" onKeyDown={onKeyDown}>
         <div className="mb-8 flex items-end justify-between">
@@ -158,7 +160,7 @@ export default function Dashboard() {
       {tersimpan && (() => {
         const Ikon = tersimpan.ikon;
         return (
-          <div className="fixed inset-0 z-10 flex items-center justify-center bg-rs-tinta/60 backdrop-blur-sm">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-rs-tinta/60 backdrop-blur-sm">
             <div className="w-[760px] rounded-[32px] bg-rs-kartu p-12 text-center shadow-2xl">
               <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-3xl ${tersimpan.warnaLembut}`}>
                 <Ikon className={`h-10 w-10 ${tersimpan.warnaKuat}`} strokeWidth={2.2} />
@@ -197,5 +199,6 @@ export default function Dashboard() {
         );
       })()}
     </div>
+    </KanvasTV>
   );
 }

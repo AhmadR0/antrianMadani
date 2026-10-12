@@ -9,12 +9,24 @@ export type DokterBertugas = {
   foto?: string;       // URL foto; kosong = avatar inisial
 };
 
-export function contohDokter(kd_poli: string, nm_poli: string): DokterBertugas[] {
+const CONTOH_NAMA_DOKTER = [
+  'dr. Gina Medika P, Sp.PD',
+  'dr. Stevani Andhika Tolabada, Sp.PD',
+  'dr. Roberthy D. Maelissa, Sp.B',
+  'dr. I Made Wirka, Sp.B',
+  'dr. Karmilayanti, Sp.N',
+];
+
+// jumlah: berapa dokter contoh (1..5), untuk menguji layout 1, 2, 3, atau lebih kartu.
+export function contohDokter(kd_poli: string, nm_poli: string, jumlah = 2): DokterBertugas[] {
   void nm_poli;
-  return [
-    { kd_dokter: `${kd_poli}-A`, nm_dokter: 'dr. Gina Medika P, Sp.PD', jam_mulai: '08:00:00', jam_selesai: '14:30:59' },
-    { kd_dokter: `${kd_poli}-B`, nm_dokter: 'dr. Stevani Andhika Tolabada, Sp.PD', jam_mulai: '14:30:00', jam_selesai: '20:00:00' },
-  ];
+  const n = Math.min(Math.max(jumlah, 1), CONTOH_NAMA_DOKTER.length);
+  return CONTOH_NAMA_DOKTER.slice(0, n).map((nm, i) => ({
+    kd_dokter: `${kd_poli}-${i}`,
+    nm_dokter: nm,
+    jam_mulai: i === 1 ? '14:30:00' : '08:00:00',
+    jam_selesai: i === 1 ? '20:00:00' : '14:30:59',
+  }));
 }
 
 const NAMA = ['JAELANTI', 'NI KADEK DARMANI', 'AL ZHIZI RUI ANUGRA', 'SITI AMINAH', 'BUDI SANTOSO', 'RINA WULANDARI'];
