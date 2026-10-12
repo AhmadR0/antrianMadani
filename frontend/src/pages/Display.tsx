@@ -6,6 +6,7 @@ import { hapusPilihanLayar } from '../lib/pilihanLayar';
 import type { Panggilan } from '../types/antrian';
 import HeaderRS from '../components/ui/HeaderRS';
 import LatarMedis from '../components/ui/LatarMedis';
+import KanvasTV from '../components/ui/KanvasTV';
 import GerbangMulai from '../components/display/GerbangMulai';
 import PanelPanggilan from '../components/display/PanelPanggilan';
 import KartuDokter from '../components/display/KartuDokter';
@@ -92,6 +93,7 @@ export default function Display() {
 
   if (!mulai) {
     return (
+      <KanvasTV>
       <GerbangMulai
         nm_poli={poli.nm_poli}
         Ikon={poli.ikon}
@@ -100,11 +102,13 @@ export default function Display() {
         onMulai={() => setMulai(true)}
         onGanti={gantiPoli}
       />
+      </KanvasTV>
     );
   }
 
   return (
-    <div className="relative grid h-screen w-screen grid-rows-[auto_1fr_auto_auto] gap-6 overflow-hidden px-12 pb-6">
+    <KanvasTV>
+    <div className="relative grid h-full w-full grid-rows-[auto_1fr_auto_auto] gap-6 overflow-hidden px-12 pb-6">
       <LatarMedis />
       <HeaderRS subjudul={poli.nm_poli} />
 
@@ -132,11 +136,12 @@ export default function Display() {
         <button
           type="button"
           onClick={simulasi}
-          className="fixed bottom-24 right-14 rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-amber-950 shadow-lg opacity-70 hover:opacity-100"
+          className="absolute right-12 top-3 rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold text-amber-950 shadow opacity-60 hover:opacity-100"
         >
           DEV: simulasi panggil
         </button>
       )}
     </div>
+    </KanvasTV>
   );
 }

@@ -10,7 +10,7 @@ type Props = {
 export default function PanelPanggilan({ sekarang, sebelumnya, aktif }: Props) {
   return (
     <section
-      className={`flex h-full flex-col rounded-[32px] p-10 shadow-md transition-colors duration-300
+      className={`flex h-full flex-col overflow-hidden rounded-[32px] p-10 shadow-md transition-colors duration-300
         ${aktif ? 'bg-rs-primer text-white ring-8 ring-rs-primer/30' : 'bg-rs-kartu text-rs-tinta'}`}
     >
       <p className={`text-2xl font-semibold tracking-widest ${aktif ? 'text-teal-100' : 'text-rs-tinta-lembut'}`}>
@@ -26,7 +26,7 @@ export default function PanelPanggilan({ sekarang, sebelumnya, aktif }: Props) {
             >
               {sekarang.no_reg}
             </div>
-            <p className="mt-6 text-5xl font-bold">{sekarang.nm_pasien || '-'}</p>
+            <p className="mt-6 line-clamp-2 text-5xl font-bold leading-tight">{sekarang.nm_pasien || '-'}</p>
             <p className={`mt-3 text-3xl ${aktif ? 'text-teal-100' : 'text-rs-tinta-lembut'}`}>{sekarang.nm_dokter}</p>
           </>
         ) : (

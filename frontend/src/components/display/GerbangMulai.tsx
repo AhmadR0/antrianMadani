@@ -26,7 +26,7 @@ export default function GerbangMulai({ nm_poli, Ikon, warnaLembut, warnaKuat, on
   };
 
   return (
-    <div className="relative flex min-h-screen w-screen flex-col items-center justify-center gap-8 text-center">
+    <div className="relative flex h-full w-full flex-col items-center justify-center gap-8 text-center">
       <LatarMedis />
       <div className={`flex h-28 w-28 items-center justify-center rounded-[32px] ${warnaLembut}`}>
         <Ikon className={`h-14 w-14 ${warnaKuat}`} strokeWidth={2.2} />
