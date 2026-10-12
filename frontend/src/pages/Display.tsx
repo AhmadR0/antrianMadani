@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { cariPoli } from '../config/poli';
 import { CONTOH_PLAYLIST, contohDokter, contohPanggilan } from '../config/contoh';
 import { hapusPilihanLayar } from '../lib/pilihanLayar';
+import { samarkanNama } from '../lib/samarkanNama';
 import type { Panggilan } from '../types/antrian';
 import HeaderRS from '../components/ui/HeaderRS';
 import LatarMedis from '../components/ui/LatarMedis';
@@ -12,6 +13,7 @@ import PanelPanggilan from '../components/display/PanelPanggilan';
 import KartuDokter from '../components/display/KartuDokter';
 import AreaVideo from '../components/display/AreaVideo';
 import RunningText from '../components/display/RunningText';
+import LapisanPanggilan from '../components/display/LapisanPanggilan';
 
 // Layar antrian satu poli. Alur: gerbang "Mulai Tampilan" -> mode idle (video bersuara)
 // -> saat ada panggilan, mode panggil selama DURASI_PANGGIL_MS (video senyap, nomor berkedip) -> idle.
@@ -130,6 +132,10 @@ export default function Display() {
     );
   }
 
+  const namaTampil = sekarang
+    ? (poli.samarkanNama ? samarkanNama(sekarang.nm_pasien) : sekarang.nm_pasien)
+    : '';
+
   return (
     <KanvasTV>
     <div className="relative grid h-full w-full grid-rows-[auto_1fr_auto_auto] gap-6 overflow-hidden px-12 pb-6">
@@ -137,7 +143,7 @@ export default function Display() {
       <HeaderRS judul={poli.nm_poli} subjudul="RSUD Madani" />
 
       <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
-        <PanelPanggilan sekarang={sekarang} sebelumnya={sebelumnya} aktif={modePanggil} />
+        <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} />
         <AreaVideo playlist={CONTOH_PLAYLIST} senyap={modePanggil} />
       </div>
 
@@ -160,6 +166,10 @@ export default function Display() {
       </section>
 
       <RunningText teks={RUNNING_TEXT} />
+
+      {modePanggil && sekarang && (
+        <LapisanPanggilan panggilan={sekarang} nm_poli={poli.nm_poli} namaTampil={namaTampil} />
+      )}
 
       {dev && (
         <button
