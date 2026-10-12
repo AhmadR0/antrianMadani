@@ -1,18 +1,79 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { RotateCcw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { cariPoli } from '../config/poli';
+import { CONTOH_PLAYLIST, contohDokter, contohPanggilan } from '../config/contoh';
 import { hapusPilihanLayar } from '../lib/pilihanLayar';
+import type { Panggilan } from '../types/antrian';
 import HeaderRS from '../components/ui/HeaderRS';
 import LatarMedis from '../components/ui/LatarMedis';
+import GerbangMulai from '../components/display/GerbangMulai';
+import PanelPanggilan from '../components/display/PanelPanggilan';
+import KartuDokter from '../components/display/KartuDokter';
+import AreaVideo from '../components/display/AreaVideo';
+import RunningText from '../components/display/RunningText';
 
-// KERANGKA SEMENTARA. Layar antrian per poli yang sebenarnya dibangun di tahap berikutnya.
-// Saat ini hanya memastikan route /display/:kd_poli ada dan nama poli tampil besar,
-// supaya operator langsung tahu kalau salah pilih.
+// Layar antrian satu poli. Alur: gerbang "Mulai Tampilan" -> mode idle (video bersuara)
+// -> saat ada panggilan, mode panggil selama DURASI_PANGGIL_MS (video senyap, nomor berkedip) -> idle.
+// SAAT INI memakai data contoh (config/contoh.ts). Tahap berikutnya: dokter dari backend,
+// panggilan dari hook useAntrianEvents.
+
+const DURASI_PANGGIL_MS = 8000;
+const JUMLAH_SEBELUMNYA = 3;
+const RUNNING_TEXT =
+  'Selamat datang di RSUD Madani. Mohon menunggu dengan tenang, nomor antrian akan dipanggil sesuai urutan. ' +
+  'Informasi dan pengaduan: (0451) 491605.';
+
+function sedangPraktik(jam_mulai: string, jam_selesai: string, now: Date): boolean {
+  const hhmm = now.toTimeString().slice(0, 8);
+  return hhmm >= jam_mulai && hhmm <= jam_selesai;
+}
 
 export default function Display() {
   const { kd_poli } = useParams<{ kd_poli: string }>();
+  const [params] = useSearchParams();
   const navigate = useNavigate();
   const poli = cariPoli(kd_poli);
+
+  // Hanya di dev: ?mulai=1 lewati gerbang, ?demo=1 langsung simulasi satu panggilan (untuk screenshot/review).
+  const dev = import.meta.env.DEV;
+  const [mulai, setMulai] = useState(dev && params.get('mulai') === '1');
+
+  const [sekarang, setSekarang] = useState<Panggilan | null>(null);
+  const [sebelumnya, setSebelumnya] = useState<Panggilan[]>([]);
+  const [modePanggil, setModePanggil] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  const dokter = useMemo(() => (poli ? contohDokter(poli.kd_poli, poli.nm_poli) : []), [poli]);
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Menerima satu panggilan: geser yang lama ke "sebelumnya", nyalakan mode panggil sebentar.
+  const terimaPanggilan = useCallback((p: Panggilan) => {
+    setSekarang((lama) => {
+      if (lama && lama.id !== p.id) setSebelumnya((s) => [lama, ...s].slice(0, JUMLAH_SEBELUMNYA));
+      return p;
+    });
+    setModePanggil(true);
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setModePanggil(false), DURASI_PANGGIL_MS);
+  }, []);
+  useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
+
+  const simulasi = useCallback(() => {
+    if (!poli) return;
+    const d = dokter.find((x) => sedangPraktik(x.jam_mulai, x.jam_selesai, new Date())) ?? dokter[0];
+    terimaPanggilan(contohPanggilan(poli.kd_poli, poli.nm_poli, d?.nm_dokter ?? '-'));
+  }, [poli, dokter, terimaPanggilan]);
+
+  useEffect(() => {
+    if (dev && mulai && params.get('demo') === '1') {
+      const t = window.setTimeout(simulasi, 800);
+      return () => window.clearTimeout(t);
+    }
+  }, [dev, mulai, params, simulasi]);
 
   const gantiPoli = () => {
     hapusPilihanLayar();
@@ -21,7 +82,7 @@ export default function Display() {
 
   if (!poli) {
     return (
-      <div className="relative min-h-screen w-screen flex flex-col items-center justify-center gap-6 p-10 text-center">
+      <div className="relative flex min-h-screen w-screen flex-col items-center justify-center gap-6 p-10 text-center">
         <LatarMedis />
         <p className="text-4xl font-bold text-red-600">Kode poli "{kd_poli}" tidak dikenal</p>
         <Link to="/" className="text-2xl font-semibold text-rs-primer underline">Kembali ke pemilih layar</Link>
@@ -29,26 +90,53 @@ export default function Display() {
     );
   }
 
-  const Ikon = poli.ikon;
+  if (!mulai) {
+    return (
+      <GerbangMulai
+        nm_poli={poli.nm_poli}
+        Ikon={poli.ikon}
+        warnaLembut={poli.warnaLembut}
+        warnaKuat={poli.warnaKuat}
+        onMulai={() => setMulai(true)}
+        onGanti={gantiPoli}
+      />
+    );
+  }
+
   return (
-    <div className="relative min-h-screen w-screen flex flex-col">
+    <div className="relative grid h-screen w-screen grid-rows-[auto_1fr_auto_auto] gap-6 overflow-hidden px-12 pb-6">
       <LatarMedis />
       <HeaderRS subjudul={poli.nm_poli} />
-      <main className="flex-1 flex flex-col items-center justify-center gap-6 p-10 text-center">
-        <div className={`flex h-24 w-24 items-center justify-center rounded-3xl ${poli.warnaLembut}`}>
-          <Ikon className={`h-12 w-12 ${poli.warnaKuat}`} strokeWidth={2.2} />
-        </div>
-        <p className="text-5xl font-bold tracking-tight text-rs-tinta">{poli.nm_poli}</p>
-        <p className="text-xl text-rs-tinta-lembut">Layar antrian untuk poli ini akan dibangun pada tahap berikutnya.</p>
+
+      <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
+        <PanelPanggilan sekarang={sekarang} sebelumnya={sebelumnya} aktif={modePanggil} />
+        <AreaVideo playlist={CONTOH_PLAYLIST} senyap={modePanggil} />
+      </div>
+
+      <section>
+        <p className="mb-3 text-xl font-semibold tracking-widest text-rs-tinta-lembut">DOKTER BERTUGAS HARI INI</p>
+        {dokter.length === 0 ? (
+          <p className="text-2xl text-rs-tinta-lembut">Tidak ada jadwal dokter hari ini.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-6">
+            {dokter.map((d) => (
+              <KartuDokter key={d.kd_dokter} dokter={d} sedangPraktik={sedangPraktik(d.jam_mulai, d.jam_selesai, now)} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <RunningText teks={RUNNING_TEXT} />
+
+      {dev && (
         <button
           type="button"
-          onClick={gantiPoli}
-          className="mt-4 inline-flex items-center gap-2 rounded-2xl border-2 border-rs-garis bg-rs-kartu px-8 py-4 text-xl font-bold text-rs-tinta
-                     transition hover:bg-slate-50 focus:outline-none focus:border-rs-tinta focus:ring-4 focus:ring-slate-300/60"
+          onClick={simulasi}
+          className="fixed bottom-24 right-14 rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-amber-950 shadow-lg opacity-70 hover:opacity-100"
         >
-          <RotateCcw className="h-5 w-5" /> Ganti poli
+          DEV: simulasi panggil
         </button>
-      </main>
+      )}
     </div>
   );
 }

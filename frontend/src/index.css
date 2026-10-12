@@ -39,3 +39,21 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Animasi layar antrian */
+@keyframes rs-marquee {
+  from { transform: translateX(100vw); }
+  to   { transform: translateX(-100%); }
+}
+.rs-marquee {
+  display: inline-block;
+  animation: rs-marquee 30s linear infinite;
+}
+
+@keyframes rs-denyut {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.97); }
+}
+.rs-denyut {
+  animation: rs-denyut 0.9s ease-in-out infinite;
+}
