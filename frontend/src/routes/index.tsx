@@ -1,14 +1,16 @@
-import {Route,Routes,BrowserRouter} from 'react-router-dom';
-import HomePage from '../pages/HomePages';
+import { Route, Routes, BrowserRouter } from 'react-router-dom';
+import Dashboard from '../pages/Dashboard';
+import Display from '../pages/Display';
 import PoliDalam from '../pages/PoliDalam';
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/display/:kd_poli" element={<Display />} />
+        {/* Halaman percobaan lama, dibiarkan sampai layar per poli jadi */}
         <Route path="/poli-dalam" element={<PoliDalam />} />
-        {/* Tambahkan route lain seperti /poli-gigi, /poli-anak, dll */}
       </Routes>
     </BrowserRouter>
   );
