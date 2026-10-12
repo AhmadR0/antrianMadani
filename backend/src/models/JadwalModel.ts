@@ -10,14 +10,24 @@ export class Jadwal extends Model {
   public kuota!: number;
 }
 
+// Primary key di Khanza adalah gabungan (kd_dokter, hari_kerja, jam_mulai):
+// satu dokter bisa punya banyak jadwal.
 Jadwal.init({
   kd_dokter: {
     type: DataTypes.STRING(20),
     allowNull: false,
     primaryKey: true
   },
-  hari_kerja: DataTypes.ENUM('SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU','AKHAD'),
-  jam_mulai: DataTypes.TIME,
+  hari_kerja: {
+    type: DataTypes.ENUM('SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU','AKHAD'),
+    allowNull: false,
+    primaryKey: true
+  },
+  jam_mulai: {
+    type: DataTypes.TIME,
+    allowNull: false,
+    primaryKey: true
+  },
   jam_selesai: DataTypes.TIME,
   kd_poli: DataTypes.CHAR(5),
   kuota: DataTypes.INTEGER,

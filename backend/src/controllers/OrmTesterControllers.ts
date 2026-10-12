@@ -23,9 +23,10 @@ export const OrmCrudControler = async (req: Request,res: Response) =>{
 
 
 export const getJadwalDokter = async (req: Request, res: Response) => {
-  const hariIni = new Date().toLocaleDateString('id-ID', {
-    weekday: 'long'
-  }).toUpperCase(); // Contoh hasil: 'SENIN'
+  // Nama hari mengikuti enum jadwal.hari_kerja di Khanza. Minggu disebut 'AKHAD',
+  // dan tidak bergantung pada locale sistem.
+  const HARI = ['AKHAD', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
+  const hariIni = HARI[new Date().getDay()];
 
   // Daftar kode poli yang mau difilter
   const daftarPoli = ['U0003', 'U0004', 'U0001', 'U0008'];
