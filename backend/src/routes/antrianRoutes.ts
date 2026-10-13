@@ -1,33 +1,47 @@
 import express, { Request, Response } from 'express';
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../config/databases';
-import { displays, findDisplay } from '../config/displays';
 import { antrianStore } from '../services/antrian/store';
+import { ambilDokterBertugas } from '../services/antrian/dokter';
 import { Panggilan } from '../services/antrian/types';
 
-const route = express.Router();
+// Satu layar TV = satu poli. Semua endpoint di sini menerima ?poli=U0003.
 
-const ambilDisplay = (req: Request, res: Response) => {
-  const id = Number(req.query.display ?? req.params.id);
-  const d = findDisplay(id);
-  if (!d) { res.status(404).json({ error: `display ${id} tidak dikenal` }); return null; }
-  return d;
+const route = express.Router();
+const POLA_KD_POLI = /^[A-Za-z0-9]{1,5}$/;
+
+const ambilKdPoli = (req: Request, res: Response): string | null => {
+  const kd = String(req.query.poli ?? '').trim();
+  if (!POLA_KD_POLI.test(kd)) { res.status(400).json({ error: 'parameter poli (kd_poli) wajib' }); return null; }
+  return kd;
 };
 
-// Daftar layar dan polinya
-route.get('/displays', (_req, res) => { res.json(displays); });
-route.get('/displays/:id', (req, res) => { const d = ambilDisplay(req, res); if (d) res.json(d); });
-
-// Keadaan saat ini: panggilan terakhir per poli + riwayat, untuk saat TV baru dibuka
-route.get('/state', (req, res) => {
-  const d = ambilDisplay(req, res); if (!d) return;
-  res.json({ display: d, terakhir: antrianStore.terakhir(d.poli), riwayat: antrianStore.riwayatUntuk(d.poli) });
+const keadaan = (kd_poli: string) => ({
+  kd_poli,
+  terakhir: antrianStore.terakhir(kd_poli),
+  riwayat: antrianStore.riwayatUntuk(kd_poli),
 });
 
-// Server-Sent Events: TV membuka satu koneksi dan menerima event "panggil"
+// Keadaan saat ini: panggilan terakhir + riwayat poli, untuk saat TV baru dibuka
+route.get('/state', (req, res) => {
+  const kd = ambilKdPoli(req, res); if (!kd) return;
+  res.json(keadaan(kd));
+});
+
+// Dokter yang bertugas hari ini di poli ini (jadwal Khanza + foto pegawai)
+route.get('/dokter', async (req, res) => {
+  const kd = ambilKdPoli(req, res); if (!kd) return;
+  try {
+    res.json(await ambilDokterBertugas(kd));
+  } catch (e) {
+    console.error('[antrian/dokter]', e);
+    res.status(500).json({ error: 'gagal mengambil dokter bertugas' });
+  }
+});
+
+// Server-Sent Events: TV membuka satu koneksi dan menerima event "state" lalu "panggil"
 route.get('/events', (req, res) => {
-  const d = ambilDisplay(req, res); if (!d) return;
-  const poliSet = new Set(d.poli);
+  const kd = ambilKdPoli(req, res); if (!kd) return;
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -39,9 +53,9 @@ route.get('/events', (req, res) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  kirim('state', { display: d, terakhir: antrianStore.terakhir(d.poli) });
+  kirim('state', keadaan(kd));
 
-  const onPanggil = (p: Panggilan) => { if (poliSet.has(p.kd_poli)) kirim('panggil', p); };
+  const onPanggil = (p: Panggilan) => { if (p.kd_poli === kd) kirim('panggil', p); };
   antrianStore.on('panggil', onPanggil);
   const heartbeat = setInterval(() => res.write(': ping\n\n'), 20000);
 

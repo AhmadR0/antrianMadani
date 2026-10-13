@@ -1,13 +1,7 @@
-import type { DokterBertugas } from '../../config/contoh';
+import type { DokterBertugas } from '../../types/antrian';
+import { inisialDokter, jamPendek } from '../../lib/jamPraktik';
 
 type Props = { dokter: DokterBertugas; sedangPraktik: boolean; kompak?: boolean };
-
-function inisial(nama: string): string {
-  const kata = nama.replace(/^dr\.?\s*/i, '').replace(/,.*$/, '').trim().split(/\s+/);
-  return kata.slice(0, 2).map((k) => k[0]?.toUpperCase() ?? '').join('');
-}
-
-const jamPendek = (j: string) => j.slice(0, 5);
 
 // Kartu satu dokter: foto (atau inisial), nama, jam praktik, tanda sedang praktik.
 export default function KartuDokter({ dokter, sedangPraktik, kompak = false }: Props) {
@@ -25,7 +19,7 @@ export default function KartuDokter({ dokter, sedangPraktik, kompak = false }: P
         <img src={dokter.foto} alt={dokter.nm_dokter} className={`${foto} object-cover`} />
       ) : (
         <div className={`flex ${foto} items-center justify-center bg-rs-primer-lembut ${inisialCls} font-bold text-rs-primer-gelap`}>
-          {inisial(dokter.nm_dokter)}
+          {inisialDokter(dokter.nm_dokter)}
         </div>
       )}
       <div className="min-w-0">

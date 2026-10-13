@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { cariPoli } from '../config/poli';
-import { CONTOH_PLAYLIST, contohDokter, contohPanggilan } from '../config/contoh';
+import { WifiOff } from 'lucide-react';
+import { cariPoli, type Poli } from '../config/poli';
 import { hapusPilihanLayar } from '../lib/pilihanLayar';
+import { sedangPraktik } from '../lib/jamPraktik';
 import { samarkanNama } from '../lib/samarkanNama';
+import { bunyikanPanggilan, pemutarSuara, siapkanSuara } from '../lib/suaraAntrian';
+import { useAntrianEvents } from '../hooks/useAntrianEvents';
+import { useDokterBertugas } from '../hooks/useDokterBertugas';
 import type { Panggilan } from '../types/antrian';
 import HeaderRS from '../components/ui/HeaderRS';
 import LatarMedis from '../components/ui/LatarMedis';
@@ -16,15 +20,18 @@ import RunningText from '../components/display/RunningText';
 import LapisanPanggilan from '../components/display/LapisanPanggilan';
 
 // Layar antrian satu poli. Alur: gerbang "Mulai Tampilan" -> mode idle (video bersuara)
-// -> saat ada panggilan, mode panggil selama DURASI_PANGGIL_MS (video senyap, nomor berkedip) -> idle.
-// SAAT INI memakai data contoh (config/contoh.ts). Tahap berikutnya: dokter dari backend,
-// panggilan dari hook useAntrianEvents.
+// -> saat ada panggilan dari Khanza (lewat backend, SSE), mode panggil selama DURASI_PANGGIL_MS
+// (video senyap, nomor berkedip) -> idle. Dokter bertugas dari jadwal Khanza lewat backend.
 
-const DURASI_PANGGIL_MS = 8000;
+const API_URL = import.meta.env.VITE_API_URL;
+const DURASI_PANGGIL_MS = 8000;      // minimal; diperpanjang kalau suaranya lebih lama
+const JEDA_SETELAH_SUARA_MS = 1500;
 const JUMLAH_SEBELUMNYA = 3;
 const RUNNING_TEXT =
   'Selamat datang di RSUD Madani. Mohon menunggu dengan tenang, nomor antrian akan dipanggil sesuai urutan. ' +
   'Informasi dan pengaduan: (0451) 491605.';
+// Daftar video idle. Kosong = tampil panel pengganti. Nanti diatur lewat halaman pengaturan.
+const PLAYLIST: string[] = [];
 
 // Kelas kolom ditulis lengkap supaya terdeteksi Tailwind.
 const KOLOM_DOKTER: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
@@ -35,9 +42,18 @@ function tombolKembali(e: KeyboardEvent): boolean {
     || e.keyCode === 461 || e.keyCode === 10009;
 }
 
-function sedangPraktik(jam_mulai: string, jam_selesai: string, now: Date): boolean {
-  const hhmm = now.toTimeString().slice(0, 8);
-  return hhmm >= jam_mulai && hhmm <= jam_selesai;
+// Minta backend menulis antripoli persis seperti Khanza; panggilannya datang kembali lewat SSE.
+async function simulasiPanggil(kd_poli: string) {
+  try {
+    const res = await fetch(`${API_URL}/antrian/simulasi/panggil`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kd_poli }),
+    });
+    if (!res.ok) console.error('[simulasi]', await res.text());
+  } catch (err) {
+    console.error('[simulasi]', err);
+  }
 }
 
 export default function Display() {
@@ -46,48 +62,9 @@ export default function Display() {
   const navigate = useNavigate();
   const poli = cariPoli(kd_poli);
 
-  // Hanya di dev: ?mulai=1 lewati gerbang, ?demo=1 langsung simulasi satu panggilan,
-  // ?dokter=N jumlah dokter contoh (untuk screenshot/review).
+  // Hanya di dev: ?mulai=1 lewati gerbang, ?demo=1 langsung simulasi satu panggilan.
   const dev = import.meta.env.DEV;
-  const jumlahDokter = dev ? Number(params.get('dokter')) || 2 : 2;
   const [mulai, setMulai] = useState(dev && params.get('mulai') === '1');
-
-  const [sekarang, setSekarang] = useState<Panggilan | null>(null);
-  const [sebelumnya, setSebelumnya] = useState<Panggilan[]>([]);
-  const [modePanggil, setModePanggil] = useState(false);
-  const timerRef = useRef<number | null>(null);
-
-  const dokter = useMemo(() => (poli ? contohDokter(poli.kd_poli, poli.nm_poli, jumlahDokter) : []), [poli, jumlahDokter]);
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(t);
-  }, []);
-
-  // Menerima satu panggilan: geser yang lama ke "sebelumnya", nyalakan mode panggil sebentar.
-  const terimaPanggilan = useCallback((p: Panggilan) => {
-    setSekarang((lama) => {
-      if (lama && lama.id !== p.id) setSebelumnya((s) => [lama, ...s].slice(0, JUMLAH_SEBELUMNYA));
-      return p;
-    });
-    setModePanggil(true);
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => setModePanggil(false), DURASI_PANGGIL_MS);
-  }, []);
-  useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
-
-  const simulasi = useCallback(() => {
-    if (!poli) return;
-    const d = dokter.find((x) => sedangPraktik(x.jam_mulai, x.jam_selesai, new Date())) ?? dokter[0];
-    terimaPanggilan(contohPanggilan(poli.kd_poli, poli.nm_poli, d?.nm_dokter ?? '-'));
-  }, [poli, dokter, terimaPanggilan]);
-
-  useEffect(() => {
-    if (dev && mulai && params.get('demo') === '1') {
-      const t = window.setTimeout(simulasi, 800);
-      return () => window.clearTimeout(t);
-    }
-  }, [dev, mulai, params, simulasi]);
 
   // Tombol Back/Escape saat tampilan berjalan: keluar fullscreen dan kembali ke gerbang.
   useEffect(() => {
@@ -125,12 +102,80 @@ export default function Display() {
         Ikon={poli.ikon}
         warnaLembut={poli.warnaLembut}
         warnaKuat={poli.warnaKuat}
-        onMulai={() => setMulai(true)}
+        onMulai={() => { void siapkanSuara(); setMulai(true); }} // siapkan audio selagi masih ada gestur pengguna
         onGanti={gantiPoli}
       />
       </KanvasTV>
     );
   }
+
+  return <TampilanPoli poli={poli} demo={dev && params.get('demo') === '1'} dev={dev} />;
+}
+
+// Bagian yang terhubung ke backend; dipasang hanya setelah gerbang dilewati.
+function TampilanPoli({ poli, demo, dev }: { poli: Poli; demo: boolean; dev: boolean }) {
+  const [sekarang, setSekarang] = useState<Panggilan | null>(null);
+  const [sebelumnya, setSebelumnya] = useState<Panggilan[]>([]);
+  const [modePanggil, setModePanggil] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  // Salinan `sekarang` yang bisa dibaca di callback tanpa memanggil setState di dalam updater
+  // (updater dijalankan dua kali di mode dev React, yang membuat "sebelumnya" terisi ganda).
+  const sekarangRef = useRef<Panggilan | null>(null);
+  useEffect(() => { sekarangRef.current = sekarang; }, [sekarang]);
+
+  // Geser panggilan yang sedang tampil ke daftar "sebelumnya", tanpa duplikat.
+  const geserKeSebelumnya = (lama: Panggilan) =>
+    setSebelumnya((s) => [lama, ...s.filter((x) => x.id !== lama.id)].slice(0, JUMLAH_SEBELUMNYA));
+
+  // Menerima satu panggilan baru: geser yang lama ke "sebelumnya", nyalakan mode panggil sebentar.
+  const terimaPanggilan = useCallback((p: Panggilan) => {
+    const lama = sekarangRef.current;
+    if (lama && lama.id !== p.id) geserKeSebelumnya(lama);
+    sekarangRef.current = p;
+    setSekarang(p);
+    setModePanggil(true);
+    const pasangTimer = (ms: number) => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => setModePanggil(false), ms);
+    };
+    pasangTimer(DURASI_PANGGIL_MS);
+    // Bunyikan nomor; mode panggil dipertahankan sampai suaranya selesai (kalau lebih lama dari minimum).
+    bunyikanPanggilan(p.no_reg)
+      .then((durasi) => { if (durasi + JEDA_SETELAH_SUARA_MS > DURASI_PANGGIL_MS) pasangTimer(durasi + JEDA_SETELAH_SUARA_MS); })
+      .catch((err) => console.warn('[suara]', err));
+  }, []);
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    pemutarSuara.hentikan();
+  }, []);
+
+  const { keadaan, status } = useAntrianEvents(poli.kd_poli, terimaPanggilan);
+  const dokter = useDokterBertugas(poli.kd_poli);
+
+  // Saat koneksi (ulang) dibuka, backend mengirim keadaan poli: tampilkan tanpa mode panggil.
+  // Panggilan yang masuk lewat event "panggil" sudah ditangani terimaPanggilan, jadi di sini id-nya sama dan dilewati.
+  useEffect(() => {
+    if (!keadaan?.terakhir) return;
+    const t = keadaan.terakhir;
+    if (sekarangRef.current?.id === t.id) return;
+    sekarangRef.current = t;
+    setSekarang(t);
+    setSebelumnya(keadaan.riwayat.filter((p) => p.id !== t.id).slice(0, JUMLAH_SEBELUMNYA));
+  }, [keadaan]);
+
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const simulasi = useCallback(() => { void simulasiPanggil(poli.kd_poli); }, [poli.kd_poli]);
+
+  useEffect(() => {
+    if (!demo) return;
+    const t = window.setTimeout(simulasi, 800);
+    return () => window.clearTimeout(t);
+  }, [demo, simulasi]);
 
   const namaTampil = sekarang
     ? (poli.samarkanNama ? samarkanNama(sekarang.nm_pasien) : sekarang.nm_pasien)
@@ -144,7 +189,7 @@ export default function Display() {
 
       <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
         <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} />
-        <AreaVideo playlist={CONTOH_PLAYLIST} senyap={modePanggil} />
+        <AreaVideo playlist={PLAYLIST} senyap={modePanggil} />
       </div>
 
       <section>
@@ -155,7 +200,7 @@ export default function Display() {
           <div className={`grid gap-6 ${KOLOM_DOKTER[dokter.length] ?? 'grid-cols-4'}`}>
             {dokter.map((d) => (
               <KartuDokter
-                key={d.kd_dokter}
+                key={`${d.kd_dokter}-${d.jam_mulai}`}
                 dokter={d}
                 sedangPraktik={sedangPraktik(d.jam_mulai, d.jam_selesai, now)}
                 kompak={dokter.length > 3}
@@ -169,6 +214,12 @@ export default function Display() {
 
       {modePanggil && sekarang && (
         <LapisanPanggilan panggilan={sekarang} nm_poli={poli.nm_poli} namaTampil={namaTampil} />
+      )}
+
+      {status === 'terputus' && (
+        <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-rose-600 px-4 py-1.5 text-base font-semibold text-white shadow-lg">
+          <WifiOff className="h-4 w-4" /> Koneksi ke server antrian terputus, mencoba menyambung…
+        </div>
       )}
 
       {dev && (

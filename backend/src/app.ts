@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import dokteRoutes from '../src/routes/dokterRoutes'
 import tesApiRoutes from '../src/routes/tesORMRoutes'
 import antrianRoutes from './routes/antrianRoutes'
+import infoRoutes from './routes/infoRoutes'
+import { FOTO_PEGAWAI_DIR } from './services/antrian/dokter'
 dotenv.config();
 
 const app = express();
@@ -15,5 +17,8 @@ app.use(express.urlencoded({extended:true}))
 app.use("/getDokter",dokteRoutes)
 app.use('/tesApi',tesApiRoutes)
 app.use('/antrian', antrianRoutes)
+app.use('/info', infoRoutes)
+// Foto pegawai Khanza (folder diatur lewat FOTO_PEGAWAI_DIR di .env), hanya dibaca
+app.use('/foto', express.static(FOTO_PEGAWAI_DIR, { maxAge: '1h', index: false }))
 
 export default app;

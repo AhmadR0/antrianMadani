@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
+import { pemutarSuara, urutanKlipPanggilan } from '../lib/suaraAntrian';
 
 // Halaman pemeriksaan kemampuan browser TV. Buka /cek di BrowseHere, foto layarnya.
 // Tidak memakai komponen lain supaya tetap tampil walau Tailwind/font gagal.
@@ -39,6 +40,16 @@ function cek(): Baris[] {
 export default function Cek() {
   const [baris, setBaris] = useState<Baris[]>([]);
   const [tombol, setTombol] = useState('belum ada tombol ditekan');
+  const [suara, setSuara] = useState('belum dites');
+  const tesSuara = async () => {
+    setSuara('memuat klip…');
+    try {
+      const ms = await pemutarSuara.putar(urutanKlipPanggilan('022'));
+      setSuara(`memutar "nomor urut dua puluh dua", ${ms} ms, Web Audio: ${'AudioContext' in window ? 'ya' : 'tidak'}`);
+    } catch (e) {
+      setSuara(`gagal: ${(e as Error).message}`);
+    }
+  };
   useEffect(() => {
     setBaris(cek());
     const h = (e: KeyboardEvent) => setTombol(`key="${e.key}" code="${e.code}" keyCode=${e.keyCode}`);
@@ -58,6 +69,13 @@ export default function Cek() {
         <div className="flex h-[60px] w-40 items-center justify-center rounded-2xl bg-rs-primer-lembut font-sans font-bold text-rs-primer-gelap">Font</div>
       </div>
       <p style={{ marginBottom: 24 }}>Kotak 1 dan 2 harus sama warnanya. Kotak 3 lebih pucat. Kotak 4 bersudut bulat, font tebal.</p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+        <button type="button" onClick={tesSuara} style={{ fontSize: 22, padding: '10px 24px', background: '#0d9488', color: '#fff', border: 0, borderRadius: 12 }}>
+          Tes suara
+        </button>
+        <span>{suara}</span>
+      </div>
 
       <p style={{ marginBottom: 24, padding: 12, background: '#f1f5f9', borderRadius: 8 }}>Tombol remote terakhir: <b>{tombol}</b></p>
 

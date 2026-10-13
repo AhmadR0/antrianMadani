@@ -3,6 +3,7 @@ import { Panggilan } from './types';
 
 // Satu-satunya pemilik "state" antrian di sisi web.
 // Khanza hanya menulis sinyal ke antripoli; detail dan riwayat disimpan di sini (memori).
+// Satu layar TV = satu poli, jadi semua pembacaan diindeks dengan kd_poli.
 class AntrianStore extends EventEmitter {
   private urut = 0;
   private terakhirPerPoli = new Map<string, Panggilan>(); // key: kd_poli
@@ -18,15 +19,14 @@ class AntrianStore extends EventEmitter {
     if (umumkan) this.emit('panggil', p);
   }
 
-  terakhir(kdPoli: string[]): Panggilan[] {
-    return kdPoli
-      .map((k) => this.terakhirPerPoli.get(k))
-      .filter((p): p is Panggilan => !!p);
+  // Panggilan terakhir satu poli, atau null kalau belum ada sejak backend menyala.
+  terakhir(kdPoli: string): Panggilan | null {
+    return this.terakhirPerPoli.get(kdPoli) ?? null;
   }
 
-  riwayatUntuk(kdPoli: string[], limit = 20): Panggilan[] {
-    const set = new Set(kdPoli);
-    return this.riwayat.filter((p) => set.has(p.kd_poli)).slice(0, limit);
+  // Riwayat satu poli, terbaru dulu (termasuk yang terakhir).
+  riwayatUntuk(kdPoli: string, limit = 10): Panggilan[] {
+    return this.riwayat.filter((p) => p.kd_poli === kdPoli).slice(0, limit);
   }
 }
 

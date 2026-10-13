@@ -1,39 +1,37 @@
-import { useEffect, useRef, useState } from "react";
-import type { DisplayConfig, Panggilan } from "../types/antrian";
+import { useEffect, useRef, useState } from 'react';
+import type { KeadaanAntrian, Panggilan } from '../types/antrian';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-type Status = "menghubungkan" | "terhubung" | "terputus";
+export type StatusKoneksi = 'menghubungkan' | 'terhubung' | 'terputus';
 
 /**
- * Berlangganan event panggilan untuk satu layar lewat Server-Sent Events.
- * - `terakhir`: panggilan terakhir per poli (dikirim backend saat koneksi dibuka).
- * - `panggilan`: panggilan baru yang masuk, satu per satu, lewat callback.
- * EventSource otomatis menyambung ulang kalau koneksi putus.
+ * Berlangganan panggilan satu poli lewat Server-Sent Events.
+ * - `keadaan`: panggilan terakhir + riwayat poli, dikirim backend setiap koneksi (ulang) dibuka.
+ * - `onPanggil`: dipanggil untuk tiap panggilan baru yang masuk.
+ * EventSource otomatis menyambung ulang kalau koneksi putus; backend lalu mengirim `state` lagi,
+ * sehingga panggilan yang terlewat selama putus tetap tampil (tanpa dibunyikan).
  */
-export function useAntrianEvents(displayId: number, onPanggil: (p: Panggilan) => void) {
-  const [display, setDisplay] = useState<DisplayConfig | null>(null);
-  const [terakhir, setTerakhir] = useState<Panggilan[]>([]);
-  const [status, setStatus] = useState<Status>("menghubungkan");
+export function useAntrianEvents(kd_poli: string, onPanggil: (p: Panggilan) => void) {
+  const [keadaan, setKeadaan] = useState<KeadaanAntrian | null>(null);
+  const [status, setStatus] = useState<StatusKoneksi>('menghubungkan');
   const onPanggilRef = useRef(onPanggil);
   onPanggilRef.current = onPanggil;
 
   useEffect(() => {
-    const es = new EventSource(`${API_URL}/antrian/events?display=${displayId}`);
-    es.onopen = () => setStatus("terhubung");
-    es.onerror = () => setStatus("terputus");
-    es.addEventListener("state", (e) => {
-      const data = JSON.parse((e as MessageEvent).data) as { display: DisplayConfig; terakhir: Panggilan[] };
-      setDisplay(data.display);
-      setTerakhir(data.terakhir);
+    const es = new EventSource(`${API_URL}/antrian/events?poli=${encodeURIComponent(kd_poli)}`);
+    es.onopen = () => setStatus('terhubung');
+    es.onerror = () => setStatus('terputus');
+    es.addEventListener('state', (e) => {
+      setKeadaan(JSON.parse((e as MessageEvent).data) as KeadaanAntrian);
     });
-    es.addEventListener("panggil", (e) => {
+    es.addEventListener('panggil', (e) => {
       const p = JSON.parse((e as MessageEvent).data) as Panggilan;
-      setTerakhir((prev) => [p, ...prev.filter((x) => x.kd_poli !== p.kd_poli)]);
+      setKeadaan((k) => ({ kd_poli, terakhir: p, riwayat: [p, ...(k?.riwayat ?? [])].slice(0, 10) }));
       onPanggilRef.current(p);
     });
     return () => es.close();
-  }, [displayId]);
+  }, [kd_poli]);
 
-  return { display, terakhir, status };
+  return { keadaan, status };
 }

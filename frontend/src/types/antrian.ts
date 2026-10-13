@@ -1,3 +1,5 @@
+// Bentuk data dari backend antrianMadani (lihat backend/src/services/antrian/types.ts dan dokter.ts).
+
 export type Panggilan = {
   id: number;
   waktu: string;
@@ -11,4 +13,17 @@ export type Panggilan = {
   tgl_registrasi: string | null;
 };
 
-export type DisplayConfig = { id: number; nama: string; poli: string[] };
+export type DokterBertugas = {
+  kd_dokter: string;
+  nm_dokter: string;
+  jam_mulai: string;   // "08:00:00"
+  jam_selesai: string; // "14:30:59"
+  foto?: string;       // path relatif ke backend, mis. "/foto/alfrida.jpg"; kosong = avatar inisial
+};
+
+// Dikirim backend lewat event SSE "state" dan GET /antrian/state
+export type KeadaanAntrian = {
+  kd_poli: string;
+  terakhir: Panggilan | null;
+  riwayat: Panggilan[]; // terbaru dulu, termasuk `terakhir`
+};
