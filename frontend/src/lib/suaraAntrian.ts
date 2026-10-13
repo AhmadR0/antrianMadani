@@ -78,7 +78,10 @@ class PemutarSuara {
     for (const s of this.sumberAktif) { try { s.stop(); } catch { /* sudah selesai */ } }
     this.sumberAktif = [];
     if (this.elemenAktif) { this.elemenAktif.pause(); this.elemenAktif = null; }
+    hentikanUcapan();
   }
+
+  get generasiSekarang() { return this.generasi; }
 
   // Memutar klip berurutan. Mengembalikan perkiraan durasi total (ms) segera, tanpa menunggu selesai.
   async putar(klip: string[]): Promise<number> {
@@ -124,6 +127,72 @@ class PemutarSuara {
 
 export const pemutarSuara = new PemutarSuara();
 
-// Pintasan: siapkan dari gestur pengguna, bunyikan satu panggilan.
-export const siapkanSuara = () => pemutarSuara.siapkan();
-export const bunyikanPanggilan = (no_reg: string) => pemutarSuara.putar(urutanKlipPanggilan(no_reg));
+// ---------- Ucapan nama lewat TTS bawaan browser (Web Speech API) ----------
+// Nama pasien tidak bisa direkam sebelumnya, jadi diucapkan mesin TTS perangkat kalau ada.
+// Kalau tidak ada (browser TV tanpa speechSynthesis / tanpa suara Indonesia), fungsi ini diam saja.
+
+const BATAS_UCAPAN_MS = 15_000; // pengaman: beberapa mesin tidak pernah memicu event end
+
+export const ttsTersedia = (): boolean =>
+  typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+
+export const daftarSuara = (): SpeechSynthesisVoice[] => (ttsTersedia() ? window.speechSynthesis.getVoices() : []);
+
+// Suara Indonesia, yang lokal (tanpa internet) didahulukan dari yang online (mis. "Google Bahasa Indonesia" di Chrome desktop).
+export const daftarSuaraIndonesia = (): SpeechSynthesisVoice[] =>
+  daftarSuara()
+    .filter((v) => v.lang.toLowerCase().startsWith('id'))
+    .sort((a, b) => Number(b.localService) - Number(a.localService));
+
+// Daftar suara dimuat asinkron di beberapa browser; panggil sekali setelah gestur pengguna.
+export function siapkanTts(): void {
+  if (!ttsTersedia()) return;
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+export function hentikanUcapan(): void {
+  if (ttsTersedia()) { try { window.speechSynthesis.cancel(); } catch { /* abaikan */ } }
+}
+
+// Huruf kapital semua ("SITI AMINAH") kadang dieja per huruf oleh mesin TTS; ubah ke Kapital Tiap Kata.
+export const teksUcapNama = (nama: string): string =>
+  nama.toLowerCase().replace(/(^|\s)(\S)/g, (_m, spasi: string, h: string) => spasi + h.toUpperCase());
+
+// Mengucapkan teks; selesai (resolve) saat ucapan berakhir, gagal, atau melewati batas waktu.
+export function ucapkan(teks: string): Promise<void> {
+  if (!ttsTersedia() || !teks.trim()) return Promise.resolve();
+  return new Promise((selesai) => {
+    const u = new SpeechSynthesisUtterance(teks);
+    u.lang = 'id-ID';
+    u.rate = 0.9;
+    const suara = daftarSuaraIndonesia()[0];
+    if (suara) u.voice = suara;
+    let beres = false;
+    const akhiri = () => { if (!beres) { beres = true; clearTimeout(t); selesai(); } };
+    const t = setTimeout(() => { hentikanUcapan(); akhiri(); }, BATAS_UCAPAN_MS);
+    u.onend = akhiri;
+    u.onerror = akhiri;
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch {
+      akhiri();
+    }
+  });
+}
+
+// ---------- Pintasan ----------
+export const siapkanSuara = () => { siapkanTts(); return pemutarSuara.siapkan(); };
+
+const tidur = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Satu panggilan utuh: klip (notif + nomor), lalu ucapan nama kalau diberikan.
+// Resolve setelah semuanya selesai, atau lebih awal kalau dibatalkan oleh panggilan berikutnya.
+export async function bunyikanPanggilan(no_reg: string, namaUcap?: string): Promise<void> {
+  const durasiKlip = await pemutarSuara.putar(urutanKlipPanggilan(no_reg));
+  const gen = pemutarSuara.generasiSekarang;
+  await tidur(durasiKlip + 200);
+  if (gen !== pemutarSuara.generasiSekarang) return; // sudah ada panggilan baru
+  if (namaUcap) await ucapkan(`Atas nama ${teksUcapNama(namaUcap)}, silakan menuju ruang periksa.`);
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
-import { pemutarSuara, urutanKlipPanggilan } from '../lib/suaraAntrian';
+import { daftarSuara, daftarSuaraIndonesia, pemutarSuara, siapkanTts, ttsTersedia, ucapkan, urutanKlipPanggilan } from '../lib/suaraAntrian';
 
 // Halaman pemeriksaan kemampuan browser TV. Buka /cek di BrowseHere, foto layarnya.
 // Tidak memakai komponen lain supaya tetap tampil walau Tailwind/font gagal.
@@ -41,6 +41,18 @@ export default function Cek() {
   const [baris, setBaris] = useState<Baris[]>([]);
   const [tombol, setTombol] = useState('belum ada tombol ditekan');
   const [suara, setSuara] = useState('belum dites');
+  const [tts, setTts] = useState('belum dites');
+  const tesTts = async () => {
+    if (!ttsTersedia()) { setTts('speechSynthesis TIDAK ada di browser ini (nama pasien tidak akan diucapkan)'); return; }
+    siapkanTts();
+    await new Promise((r) => setTimeout(r, 300)); // beri waktu daftar suara dimuat
+    const semua = daftarSuara();
+    const indo = daftarSuaraIndonesia();
+    setTts(`mengucapkan… (${semua.length} suara, Indonesia: ${indo.map((v) => v.name).join(', ') || 'tidak ada'})`);
+    const mulai = Date.now();
+    await ucapkan('Atas nama Tuan Budi Santoso, silakan menuju ruang periksa.');
+    setTts(`selesai ${Date.now() - mulai} ms. ${semua.length} suara, Indonesia: ${indo.map((v) => `${v.name} (${v.lang}, ${v.localService ? 'lokal' : 'online'})`).join(', ') || 'TIDAK ADA, memakai suara default'}`);
+  };
   const tesSuara = async () => {
     setSuara('memuat klip…');
     try {
@@ -75,6 +87,12 @@ export default function Cek() {
           Tes suara
         </button>
         <span>{suara}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+        <button type="button" onClick={tesTts} style={{ fontSize: 22, padding: '10px 24px', background: '#0284c7', color: '#fff', border: 0, borderRadius: 12 }}>
+          Tes TTS nama
+        </button>
+        <span>{tts}</span>
       </div>
 
       <p style={{ marginBottom: 24, padding: 12, background: '#f1f5f9', borderRadius: 8 }}>Tombol remote terakhir: <b>{tombol}</b></p>

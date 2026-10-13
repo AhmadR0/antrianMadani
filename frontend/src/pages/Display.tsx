@@ -139,11 +139,18 @@ function TampilanPoli({ poli, demo, dev }: { poli: Poli; demo: boolean; dev: boo
       timerRef.current = window.setTimeout(() => setModePanggil(false), ms);
     };
     pasangTimer(DURASI_PANGGIL_MS);
-    // Bunyikan nomor; mode panggil dipertahankan sampai suaranya selesai (kalau lebih lama dari minimum).
-    bunyikanPanggilan(p.no_reg)
-      .then((durasi) => { if (durasi + JEDA_SETELAH_SUARA_MS > DURASI_PANGGIL_MS) pasangTimer(durasi + JEDA_SETELAH_SUARA_MS); })
-      .catch((err) => console.warn('[suara]', err));
-  }, []);
+    // Bunyikan nomor, lalu nama (tidak di poli yang namanya disamarkan). Mode panggil dipertahankan
+    // sampai suaranya selesai kalau itu lebih lama dari durasi minimum.
+    const mulai = Date.now();
+    const namaUcap = poli.samarkanNama ? undefined : p.nm_pasien;
+    bunyikanPanggilan(p.no_reg, namaUcap)
+      .catch((err) => console.warn('[suara]', err))
+      .finally(() => {
+        if (sekarangRef.current?.id !== p.id) return; // sudah ada panggilan lain
+        const sisa = DURASI_PANGGIL_MS - (Date.now() - mulai);
+        pasangTimer(Math.max(sisa, JEDA_SETELAH_SUARA_MS));
+      });
+  }, [poli.samarkanNama]);
   useEffect(() => () => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
     pemutarSuara.hentikan();
