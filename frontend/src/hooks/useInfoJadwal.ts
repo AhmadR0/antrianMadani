@@ -7,6 +7,7 @@ export type DokterJadwal = {
   kd_dokter: string;
   nm_dokter: string;
   nm_sps: string | null;
+  foto?: string;       // URL foto lengkap, kosong = avatar inisial
   jam_mulai: string;   // "08:00"
   jam_selesai: string; // "14:30"
   jam_diatur: boolean;
@@ -37,7 +38,14 @@ export function useInfoJadwal() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = (await res.json()) as InfoJadwal;
         if (!hidup) return;
-        setData(json);
+        // URL foto dari backend relatif ("/foto/x.jpg"); lengkapi dengan alamat backend.
+        setData({
+          ...json,
+          poli: json.poli.map((p) => ({
+            ...p,
+            dokter: p.dokter.map((d) => (d.foto ? { ...d, foto: `${API_URL}${d.foto}` } : d)),
+          })),
+        });
         setStatus('siap');
       } catch (err) {
         if (!hidup) return;

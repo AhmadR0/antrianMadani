@@ -12,7 +12,7 @@ import { hapusPilihanLayar } from '../lib/pilihanLayar';
 // Layar informasi tempat tidur: ringkasan rumah sakit di atas, kartu per bangsal di bawah.
 // Kalau bangsal lebih dari satu halaman, halaman berganti otomatis.
 
-const PER_HALAMAN = 12; // 4 kolom x 3 baris
+const PER_HALAMAN = 6; // 3 kolom x 2 baris, kartu tinggi supaya ubin per kelas besar
 const DURASI_HALAMAN_MS = 12_000;
 const RUNNING_TEXT =
   'Informasi ketersediaan tempat tidur diperbarui otomatis dari sistem rumah sakit. Untuk pendaftaran rawat inap silakan ke bagian admisi.';
@@ -104,7 +104,7 @@ export default function InfoBed() {
             </div>
           )}
           {data && (
-            <div key={halaman} className="rs-masuk grid h-full grid-cols-4 grid-rows-3 gap-5">
+            <div key={halaman} className="rs-masuk grid h-full grid-cols-3 grid-rows-2 gap-5">
               {tampil.map((b) => <KartuBangsal key={b.kd_bangsal} bangsal={b} />)}
             </div>
           )}

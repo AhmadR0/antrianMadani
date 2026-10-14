@@ -9,9 +9,9 @@ import KartuJadwalPoli from '../components/info/KartuJadwalPoli';
 import { useInfoJadwal } from '../hooks/useInfoJadwal';
 import { hapusPilihanLayar } from '../lib/pilihanLayar';
 
-// Layar jadwal dokter hari ini untuk semua poli. Kartu per poli, 8 per halaman, berganti otomatis.
+// Layar jadwal dokter hari ini untuk semua poli. Kartu per poli, 6 per halaman (3 kolom x 2 baris), berganti otomatis.
 
-const PER_HALAMAN = 8; // 4 kolom x 2 baris
+const PER_HALAMAN = 6;
 const DURASI_HALAMAN_MS = 12_000;
 const RUNNING_TEXT =
   'Jadwal dokter dapat berubah sewaktu-waktu sesuai kondisi pelayanan. Informasi lebih lanjut silakan hubungi petugas pendaftaran.';
@@ -101,7 +101,7 @@ export default function InfoJadwal() {
             </div>
           )}
           {data && data.poli.length > 0 && (
-            <div key={halaman} className="rs-masuk grid h-full grid-cols-4 grid-rows-2 gap-5">
+            <div key={halaman} className="rs-masuk grid h-full grid-cols-3 grid-rows-2 gap-5">
               {tampil.map((p) => <KartuJadwalPoli key={p.kd_poli} poli={p} now={now} />)}
             </div>
           )}

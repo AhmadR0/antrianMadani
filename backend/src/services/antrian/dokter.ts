@@ -38,7 +38,8 @@ const SQL = `
   ORDER BY j.jam_mulai, d.nm_dokter
 `;
 
-function urlFoto(photo: string | null): string | undefined {
+// Dipakai juga oleh info/jadwal.
+export function urlFoto(photo: string | null): string | undefined {
   const nama = path.basename((photo ?? '').trim());
   if (!nama || nama === '.' || nama === 'photo') return undefined;
   try {

@@ -1,5 +1,6 @@
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../../config/databases';
+import { urlFoto } from '../antrian/dokter';
 
 // Jadwal dokter hari ini untuk semua poli, dibaca dari tabel Khanza `jadwal` (hanya SELECT).
 // Hari dihitung di server. Minggu di Khanza disebut 'AKHAD'.
@@ -11,6 +12,7 @@ export type DokterJadwal = {
   kd_dokter: string;
   nm_dokter: string;
   nm_sps: string | null;   // null kalau spesialis kosong atau '-'
+  foto?: string;           // "/foto/x.jpg" kalau file fotonya ada
   jam_mulai: string;       // "08:00"
   jam_selesai: string;     // "14:30"
   jam_diatur: boolean;     // false kalau 00:00–00:00 (belum diisi di Khanza)
@@ -38,17 +40,19 @@ type Baris = {
   nm_sps: string | null;
   jam_mulai: string;
   jam_selesai: string | null;
+  photo: string | null;
 };
 
 const SQL = `
   SELECT
     p.kd_poli, p.nm_poli,
     d.kd_dokter, d.nm_dokter, s.nm_sps,
-    j.jam_mulai, j.jam_selesai
+    j.jam_mulai, j.jam_selesai, pg.photo
   FROM jadwal j
   JOIN dokter d     ON d.kd_dokter = j.kd_dokter AND d.status = '1'
   JOIN poliklinik p ON p.kd_poli  = j.kd_poli   AND p.status = '1'
   LEFT JOIN spesialis s ON s.kd_sps = d.kd_sps
+  LEFT JOIN pegawai pg  ON pg.nik = d.kd_dokter
   WHERE j.hari_kerja = ?
   ORDER BY p.nm_poli, j.jam_mulai, d.nm_dokter
 `;
@@ -84,6 +88,7 @@ export async function ambilInfoJadwal(now = new Date()): Promise<InfoJadwal> {
       kd_dokter: r.kd_dokter,
       nm_dokter: rapikan(r.nm_dokter),
       nm_sps: sps && sps !== '-' ? sps : null,
+      foto: urlFoto(r.photo),
       jam_mulai: mulai,
       jam_selesai: selesai,
       jam_diatur: !(mulai === '00:00' && selesai === '00:00'),
