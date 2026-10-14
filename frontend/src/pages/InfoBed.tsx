@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BedDouble, CircleAlert } from 'lucide-react';
 import KanvasTV from '../components/ui/KanvasTV';
@@ -6,13 +6,32 @@ import HeaderRS from '../components/ui/HeaderRS';
 import LatarMedis from '../components/ui/LatarMedis';
 import RunningText from '../components/display/RunningText';
 import KartuBangsal from '../components/info/KartuBangsal';
-import { useInfoBed, type HitunganBed } from '../hooks/useInfoBed';
+import { useInfoBed, type BangsalBed, type HitunganBed } from '../hooks/useInfoBed';
 import { hapusPilihanLayar } from '../lib/pilihanLayar';
 
 // Layar informasi tempat tidur: ringkasan rumah sakit di atas, kartu per bangsal di bawah.
 // Kalau bangsal lebih dari satu halaman, halaman berganti otomatis.
 
-const PER_HALAMAN = 6; // 3 kolom x 2 baris, kartu tinggi supaya ubin per kelas besar
+// Grid 3 kolom x 2 baris = 6 "satuan" per halaman. Kartu dengan >= 3 kelas memakai 2 satuan
+// (setinggi dua baris, satu kolom penuh) supaya baris kelasnya tidak mepet.
+const SATUAN_PER_HALAMAN = 6;
+const kartuTinggi = (b: BangsalBed) => b.kelas.length >= 3;
+const bobot = (b: BangsalBed) => (kartuTinggi(b) ? 2 : 1);
+
+// Membagi daftar bangsal ke halaman berdasarkan bobot; kartu tinggi ditaruh di depan tiap halaman.
+function bagiHalaman(daftar: BangsalBed[]): BangsalBed[][] {
+  const halaman: BangsalBed[][] = [];
+  let sekarang: BangsalBed[] = [];
+  let terisi = 0;
+  for (const b of daftar) {
+    const w = bobot(b);
+    if (terisi + w > SATUAN_PER_HALAMAN) { halaman.push(sekarang); sekarang = []; terisi = 0; }
+    sekarang.push(b);
+    terisi += w;
+  }
+  if (sekarang.length) halaman.push(sekarang);
+  return halaman.map((h) => [...h].sort((a, b) => bobot(b) - bobot(a)));
+}
 const DURASI_HALAMAN_MS = 12_000;
 const RUNNING_TEXT =
   'Informasi ketersediaan tempat tidur diperbarui otomatis dari sistem rumah sakit. Untuk pendaftaran rawat inap silakan ke bagian admisi.';
@@ -62,7 +81,8 @@ export default function InfoBed() {
   const { data, status } = useInfoBed();
   const [halaman, setHalaman] = useState(0);
 
-  const jumlahHalaman = data ? Math.max(1, Math.ceil(data.bangsal.length / PER_HALAMAN)) : 1;
+  const halamanBangsal = useMemo(() => (data ? bagiHalaman(data.bangsal) : []), [data]);
+  const jumlahHalaman = Math.max(1, halamanBangsal.length);
 
   // Ganti halaman otomatis kalau bangsal tidak muat satu layar.
   useEffect(() => {
@@ -83,7 +103,7 @@ export default function InfoBed() {
     return () => window.removeEventListener('keydown', h);
   }, [navigate]);
 
-  const tampil = data ? data.bangsal.slice(halaman * PER_HALAMAN, (halaman + 1) * PER_HALAMAN) : [];
+  const tampil = halamanBangsal[halaman] ?? [];
 
   return (
     <KanvasTV>
@@ -104,8 +124,8 @@ export default function InfoBed() {
             </div>
           )}
           {data && (
-            <div key={halaman} className="rs-masuk grid h-full grid-cols-3 grid-rows-2 gap-5">
-              {tampil.map((b) => <KartuBangsal key={b.kd_bangsal} bangsal={b} />)}
+            <div key={halaman} className="rs-masuk grid h-full grid-flow-dense grid-cols-3 grid-rows-2 gap-5">
+              {tampil.map((b) => <KartuBangsal key={b.kd_bangsal} bangsal={b} tinggi={kartuTinggi(b)} />)}
             </div>
           )}
           {jumlahHalaman > 1 && (
