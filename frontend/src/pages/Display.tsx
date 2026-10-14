@@ -18,12 +18,12 @@ import KartuDokter from '../components/display/KartuDokter';
 import AreaVideo from '../components/display/AreaVideo';
 import RunningText from '../components/display/RunningText';
 import LapisanPanggilan from '../components/display/LapisanPanggilan';
+import { API_URL } from '../lib/api';
 
 // Layar antrian satu poli. Alur: gerbang "Mulai Tampilan" -> mode idle (video bersuara)
 // -> saat ada panggilan dari Khanza (lewat backend, SSE), mode panggil selama DURASI_PANGGIL_MS
 // (video senyap, nomor berkedip) -> idle. Dokter bertugas dari jadwal Khanza lewat backend.
 
-const API_URL = import.meta.env.VITE_API_URL;
 const DURASI_PANGGIL_MS = 8000;      // minimal; diperpanjang kalau suaranya lebih lama
 const JEDA_SETELAH_SUARA_MS = 1500;
 const JUMLAH_SEBELUMNYA = 3;

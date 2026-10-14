@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeadaanAntrian, Panggilan } from '../types/antrian';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from '../lib/api';
 
 export type StatusKoneksi = 'menghubungkan' | 'terhubung' | 'terputus';
 

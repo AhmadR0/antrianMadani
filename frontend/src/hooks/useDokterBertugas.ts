@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DokterBertugas } from '../types/antrian';
+import { API_URL } from '../lib/api';
 
-const API_URL = import.meta.env.VITE_API_URL;
 const JEDA_POLLING_MS = 5 * 60_000;
 
 /**

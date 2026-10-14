@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_URL } from '../lib/api';
 
-const API_URL = import.meta.env.VITE_API_URL;
 const JEDA_POLLING_MS = 30_000;
 
 export type HitunganBed = { total: number; terisi: number; kosong: number; lainnya: number };

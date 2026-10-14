@@ -144,11 +144,21 @@ export const daftarSuaraIndonesia = (): SpeechSynthesisVoice[] =>
     .filter((v) => v.lang.toLowerCase().startsWith('id'))
     .sort((a, b) => Number(b.localService) - Number(a.localService));
 
-// Daftar suara dimuat asinkron di beberapa browser; panggil sekali setelah gestur pengguna.
+// Daftar suara dimuat asinkron di beberapa browser. Dipanggil saat modul dimuat dan lagi dari gestur pengguna.
 export function siapkanTts(): void {
   if (!ttsTersedia()) return;
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+if (typeof window !== 'undefined') siapkanTts();
+
+// Menunggu daftar suara terisi, paling lama `batasMs`. Tidak semua browser mengisi daftar ini.
+function tungguSuara(batasMs = 1500): Promise<void> {
+  return new Promise((selesai) => {
+    if (!ttsTersedia() || daftarSuara().length > 0) { selesai(); return; }
+    const t = setTimeout(() => { window.speechSynthesis.onvoiceschanged = null; selesai(); }, batasMs);
+    window.speechSynthesis.onvoiceschanged = () => { clearTimeout(t); selesai(); };
+  });
 }
 
 export function hentikanUcapan(): void {
@@ -160,8 +170,9 @@ export const teksUcapNama = (nama: string): string =>
   nama.toLowerCase().replace(/(^|\s)(\S)/g, (_m, spasi: string, h: string) => spasi + h.toUpperCase());
 
 // Mengucapkan teks; selesai (resolve) saat ucapan berakhir, gagal, atau melewati batas waktu.
-export function ucapkan(teks: string): Promise<void> {
-  if (!ttsTersedia() || !teks.trim()) return Promise.resolve();
+export async function ucapkan(teks: string): Promise<void> {
+  if (!ttsTersedia() || !teks.trim()) return;
+  await tungguSuara();
   return new Promise((selesai) => {
     const u = new SpeechSynthesisUtterance(teks);
     u.lang = 'id-ID';
@@ -172,8 +183,17 @@ export function ucapkan(teks: string): Promise<void> {
     const akhiri = () => { if (!beres) { beres = true; clearTimeout(t); selesai(); } };
     const t = setTimeout(() => { hentikanUcapan(); akhiri(); }, BATAS_UCAPAN_MS);
     u.onend = akhiri;
-    u.onerror = akhiri;
+    u.onerror = (e) => {
+      const petunjuk = e.error === 'not-allowed'
+        ? '(browser menolak: halaman belum pernah diklik; buka lewat tombol "Mulai Tampilan", bukan ?mulai=1)'
+        : e.error === 'synthesis-failed'
+          ? '(mesin TTS perangkat gagal; di Linux cek speech-dispatcher)'
+          : '';
+      console.warn('[tts] gagal:', e.error, petunjuk, '| suara:', suara?.name ?? 'default');
+      akhiri();
+    };
     try {
+      console.info('[tts] ucap:', teks, '| suara:', suara ? `${suara.name} (${suara.localService ? 'lokal' : 'online'})` : 'default', '| total suara:', daftarSuara().length);
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
     } catch {
