@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { WifiOff } from 'lucide-react';
 import { cariPoli, type Poli } from '../config/poli';
-import { hapusPilihanLayar } from '../lib/pilihanLayar';
+import { bacaPengaturanTv, hapusPilihanLayar, simpanPengaturanTv, type PengaturanTv } from '../lib/pilihanLayar';
 import { sedangPraktik } from '../lib/jamPraktik';
 import { samarkanNama } from '../lib/samarkanNama';
 import { bunyikanPanggilan, pemutarSuara, siapkanSuara } from '../lib/suaraAntrian';
@@ -65,6 +65,12 @@ export default function Display() {
   // Hanya di dev: ?mulai=1 lewati gerbang, ?demo=1 langsung simulasi satu panggilan.
   const dev = import.meta.env.DEV;
   const [mulai, setMulai] = useState(dev && params.get('mulai') === '1');
+  // Pengaturan per TV (video & suaranya), diingat di localStorage TV ini. Dev: ?video=0 untuk mencoba tanpa video.
+  const [pengaturan, setPengaturan] = useState<PengaturanTv>(() => {
+    const p = bacaPengaturanTv();
+    return dev && params.get('video') === '0' ? { ...p, video: false } : p;
+  });
+  const ubahPengaturan = (p: PengaturanTv) => { setPengaturan(p); simpanPengaturanTv(p); };
 
   // Tombol Back/Escape saat tampilan berjalan: keluar fullscreen dan kembali ke gerbang.
   useEffect(() => {
@@ -102,6 +108,8 @@ export default function Display() {
         Ikon={poli.ikon}
         warnaLembut={poli.warnaLembut}
         warnaKuat={poli.warnaKuat}
+        pengaturan={pengaturan}
+        onUbahPengaturan={ubahPengaturan}
         onMulai={() => { void siapkanSuara(); setMulai(true); }} // siapkan audio selagi masih ada gestur pengguna
         onGanti={gantiPoli}
       />
@@ -109,11 +117,11 @@ export default function Display() {
     );
   }
 
-  return <TampilanPoli poli={poli} demo={dev && params.get('demo') === '1'} dev={dev} />;
+  return <TampilanPoli poli={poli} pengaturan={pengaturan} demo={dev && params.get('demo') === '1'} dev={dev} />;
 }
 
 // Bagian yang terhubung ke backend; dipasang hanya setelah gerbang dilewati.
-function TampilanPoli({ poli, demo, dev }: { poli: Poli; demo: boolean; dev: boolean }) {
+function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan: PengaturanTv; demo: boolean; dev: boolean }) {
   const [sekarang, setSekarang] = useState<Panggilan | null>(null);
   const [sebelumnya, setSebelumnya] = useState<Panggilan[]>([]);
   const [modePanggil, setModePanggil] = useState(false);
@@ -194,28 +202,57 @@ function TampilanPoli({ poli, demo, dev }: { poli: Poli; demo: boolean; dev: boo
       <LatarMedis />
       <HeaderRS judul={poli.nm_poli} subjudul="RSUD Madani" />
 
-      <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
-        <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} />
-        <AreaVideo playlist={PLAYLIST} senyap={modePanggil} />
-      </div>
-
-      <section>
-        <p className="mb-3 text-xl font-semibold tracking-widest text-rs-tinta-lembut">DOKTER BERTUGAS HARI INI</p>
-        {dokter.length === 0 ? (
-          <p className="text-2xl text-rs-tinta-lembut">Tidak ada jadwal dokter hari ini.</p>
-        ) : (
-          <div className={`grid gap-6 ${KOLOM_DOKTER[dokter.length] ?? 'grid-cols-4'}`}>
-            {dokter.map((d) => (
-              <KartuDokter
-                key={`${d.kd_dokter}-${d.jam_mulai}`}
-                dokter={d}
-                sedangPraktik={sedangPraktik(d.jam_mulai, d.jam_selesai, now)}
-                kompak={dokter.length > 3}
-              />
-            ))}
+      {pengaturan.video ? (
+        <>
+          {/* Dengan video: nomor di kiri, video di kanan, dokter di bawah */}
+          <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
+            <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} />
+            <AreaVideo playlist={PLAYLIST} senyap={modePanggil} bisu={!pengaturan.suaraVideo} />
           </div>
-        )}
-      </section>
+          <section>
+            <p className="mb-3 text-xl font-semibold tracking-widest text-rs-tinta-lembut">DOKTER BERTUGAS HARI INI</p>
+            {dokter.length === 0 ? (
+              <p className="text-2xl text-rs-tinta-lembut">Tidak ada jadwal dokter hari ini.</p>
+            ) : (
+              <div className={`grid gap-6 ${KOLOM_DOKTER[dokter.length] ?? 'grid-cols-4'}`}>
+                {dokter.map((d) => (
+                  <KartuDokter
+                    key={`${d.kd_dokter}-${d.jam_mulai}`}
+                    dokter={d}
+                    sedangPraktik={sedangPraktik(d.jam_mulai, d.jam_selesai, now)}
+                    kompak={dokter.length > 3}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : (
+        <>
+          {/* Tanpa video (TV berhadapan): nomor di kiri, dokter mengisi kolom kanan, bertumpuk */}
+          <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
+            <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} />
+            <section className="flex min-h-0 flex-col">
+              <p className="mb-3 text-xl font-semibold tracking-widest text-rs-tinta-lembut">DOKTER BERTUGAS HARI INI</p>
+              {dokter.length === 0 ? (
+                <p className="text-2xl text-rs-tinta-lembut">Tidak ada jadwal dokter hari ini.</p>
+              ) : (
+                <div className="flex min-h-0 flex-1 flex-col justify-center gap-5">
+                  {dokter.map((d) => (
+                    <KartuDokter
+                      key={`${d.kd_dokter}-${d.jam_mulai}`}
+                      dokter={d}
+                      sedangPraktik={sedangPraktik(d.jam_mulai, d.jam_selesai, now)}
+                      kompak={dokter.length > 3}
+                      besar={dokter.length <= 3}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        </>
+      )}
 
       <RunningText teks={RUNNING_TEXT} />
 

@@ -32,3 +32,30 @@ export function hapusPilihanLayar(): void {
     /* abaikan */
   }
 }
+
+// ---------- Pengaturan per TV (sementara di localStorage; nanti pindah ke halaman admin) ----------
+// video: tampilkan kolom video & iklan. suaraVideo: video bersuara (false = bisu, mis. dua TV berhadapan).
+
+export type PengaturanTv = { video: boolean; suaraVideo: boolean };
+
+const KUNCI_TV = 'antrian.layar.tv';
+const BAWAAN_TV: PengaturanTv = { video: true, suaraVideo: true };
+
+export function bacaPengaturanTv(): PengaturanTv {
+  try {
+    const mentah = window.localStorage.getItem(KUNCI_TV);
+    if (!mentah) return { ...BAWAAN_TV };
+    const obj = JSON.parse(mentah) as Partial<PengaturanTv>;
+    return { video: obj.video ?? true, suaraVideo: obj.suaraVideo ?? true };
+  } catch {
+    return { ...BAWAAN_TV };
+  }
+}
+
+export function simpanPengaturanTv(p: PengaturanTv): void {
+  try {
+    window.localStorage.setItem(KUNCI_TV, JSON.stringify(p));
+  } catch {
+    /* abaikan */
+  }
+}
