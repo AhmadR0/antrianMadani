@@ -6,6 +6,7 @@ type Props = {
   poli: Poli;
   sekarang: Panggilan | null;
   namaTampil: string;        // nama pasien sesudah aturan penyamaran poli ini
+  pakaiNomor?: boolean;      // poli yang namanya disamarkan: nomor urut ditampilkan
   dokter: DokterBertugas[];
   now: Date;
   mode: 'tumpuk' | 'kolom';  // tumpuk: kartu bertumpuk di kolom kiri (ada video); kolom: satu kolom penuh per poli
@@ -14,17 +15,17 @@ type Props = {
 
 // Satu blok per poli di layar multi-poli (koridor): kepala berwarna poli, nomor terakhir dipanggil,
 // lalu dokter bertugas hari ini. Semua informasi satu poli ada di satu blok.
-export default function KartuPoli({ poli, sekarang, namaTampil, dokter, now, mode, jumlahPoli }: Props) {
+export default function KartuPoli({ poli, sekarang, namaTampil, pakaiNomor = false, dokter, now, mode, jumlahPoli }: Props) {
   const Ikon = poli.ikon;
   const kolom = mode === 'kolom';
   // Tiga tingkat ukuran: kolom penuh (tanpa video), tumpuk 2 poli (lega), tumpuk 3 poli (padat, ~260 px per kartu).
   const padat = !kolom && jumlahPoli >= 3;
   const maksDokter = kolom ? 3 : padat ? 1 : 2;
   const u = kolom
-    ? { nomor: 'text-[9rem]',  nama: 'text-4xl', pemanggil: 'mt-1 text-2xl', foto: 'h-16 w-16 text-xl', dnama: 'text-2xl', djam: 'text-lg',  baris: 'px-3 py-2' }
+    ? { nomor: 'text-[9rem]',  nama: 'text-4xl', namaBesar: 'text-6xl', pemanggil: 'mt-1 text-2xl', foto: 'h-16 w-16 text-xl', dnama: 'text-2xl', djam: 'text-lg',  baris: 'px-3 py-2' }
     : padat
-      ? { nomor: 'text-[4.5rem]', nama: 'text-3xl', pemanggil: 'text-base',    foto: 'h-[52px] w-[52px] text-lg', dnama: 'text-xl', djam: 'text-sm', baris: 'px-3 py-1.5' }
-      : { nomor: 'text-[5.5rem]', nama: 'text-3xl', pemanggil: 'text-xl',      foto: 'h-14 w-14 text-lg', dnama: 'text-xl', djam: 'text-base', baris: 'px-3 py-2' };
+      ? { nomor: 'text-[4.5rem]', nama: 'text-3xl', namaBesar: 'text-4xl', pemanggil: 'text-base',    foto: 'h-[52px] w-[52px] text-lg', dnama: 'text-xl', djam: 'text-sm', baris: 'px-3 py-1.5' }
+      : { nomor: 'text-[5.5rem]', nama: 'text-3xl', namaBesar: 'text-5xl', pemanggil: 'text-xl',      foto: 'h-14 w-14 text-lg', dnama: 'text-xl', djam: 'text-base', baris: 'px-3 py-2' };
   const tampil = dokter.slice(0, maksDokter);
   const sisa = dokter.length - tampil.length;
 
@@ -38,17 +39,19 @@ export default function KartuPoli({ poli, sekarang, namaTampil, dokter, now, mod
         <p className={`line-clamp-2 font-bold leading-tight text-rs-tinta ${kolom ? 'text-4xl' : 'text-[2rem]'}`}>{poli.nm_poli}</p>
       </div>
 
-      {/* Nomor terakhir dipanggil */}
-      <div className={`flex min-h-0 items-center gap-5 overflow-hidden ${kolom ? 'mt-6 flex-1 flex-col justify-center text-center' : 'mt-2 flex-1'}`}>
+      {/* Terakhir dipanggil: NAMA pasien besar (nomor hanya di poli yang namanya disamarkan) */}
+      <div className={`flex min-h-0 flex-1 flex-col justify-center overflow-hidden ${kolom ? 'mt-6 text-center' : 'mt-2'}`}>
         {sekarang ? (
           <>
-            <div className={`shrink-0 font-bold leading-none tabular-nums tracking-tight text-rs-tinta ${u.nomor}`}>
-              {sekarang.no_reg}
-            </div>
-            <div className="min-w-0">
-              <p className={`font-bold leading-tight text-rs-tinta ${padat ? 'line-clamp-1' : 'line-clamp-2'} ${u.nama}`}>{namaTampil || '-'}</p>
-              <p className={`truncate text-rs-tinta-lembut ${u.pemanggil}`}>{sekarang.nm_dokter}</p>
-            </div>
+            {pakaiNomor && (
+              <div className={`shrink-0 font-bold leading-none tabular-nums tracking-tight text-rs-tinta ${u.nomor}`}>
+                {sekarang.no_reg}
+              </div>
+            )}
+            <p className={`font-bold leading-tight text-rs-tinta ${pakaiNomor ? `${u.nama} line-clamp-1` : `${u.namaBesar} line-clamp-2`}`}>
+              {namaTampil || '-'}
+            </p>
+            <p className={`truncate text-rs-tinta-lembut ${u.pemanggil}`}>{sekarang.nm_dokter}</p>
           </>
         ) : (
           <p className={`text-rs-tinta-lembut ${kolom ? 'text-3xl' : 'py-3 text-2xl'}`}>Menunggu panggilan</p>

@@ -5,15 +5,19 @@ type Props = {
   panggilan: Panggilan;
   nm_poli: string;
   namaTampil: string;
-  // Layar multi-poli (koridor): nama poli harus dominan, latar memakai warna poli, tujuan disebut.
+  pakaiNomor?: boolean; // poli yang namanya disamarkan: nomor urut jadi elemen utama
+  // Layar multi-poli (koridor): nama poli harus dominan, latar memakai warna poli.
   multiPoli?: { Ikon: LucideIcon; warnaLatar: string };
 };
 
-// Lapisan ambil alih seluruh layar saat ada panggilan. Video di belakangnya tetap berjalan
-// (dibisukan) dan hanya tertutup, sehingga lanjut dari posisi yang sama saat lapisan hilang.
-export default function LapisanPanggilan({ panggilan, nm_poli, namaTampil, multiPoli }: Props) {
+// Lapisan ambil alih seluruh layar saat ada panggilan. Kebijakan RS: pasien dipanggil dengan NAMA,
+// jadi nama pasien yang paling besar. Video di belakangnya tetap berjalan (dibisukan) dan hanya tertutup.
+export default function LapisanPanggilan({ panggilan, nm_poli, namaTampil, pakaiNomor = false, multiPoli }: Props) {
   const latar = multiPoli ? multiPoli.warnaLatar : 'bg-gradient-to-br from-teal-600 via-rs-primer to-teal-800';
   const Ikon = multiPoli?.Ikon;
+  // Nama panjang diperkecil otomatis supaya tetap muat dua baris.
+  const panjang = (namaTampil || '').length;
+  const ukuranNama = panjang > 28 ? '7rem' : panjang > 18 ? '9rem' : '11rem';
 
   return (
     <div className={`rs-masuk absolute inset-0 z-20 flex flex-col items-center justify-between ${latar} px-16 py-12 text-center text-white`}>
@@ -26,20 +30,23 @@ export default function LapisanPanggilan({ panggilan, nm_poli, namaTampil, multi
         <p className="text-3xl font-semibold uppercase tracking-[0.3em] text-white/80">{nm_poli}</p>
       )}
 
-      <div className="flex flex-col items-center">
-        <p className="text-4xl font-semibold tracking-widest text-white/80">NOMOR ANTRIAN</p>
-        <div className="rs-denyut font-bold leading-none tabular-nums tracking-tight" style={{ fontSize: multiPoli ? '22rem' : '26rem' }}>
-          {panggilan.no_reg}
-        </div>
-        <p className="mt-4 line-clamp-2 max-w-[1500px] text-7xl font-bold leading-tight">{namaTampil || '-'}</p>
-        <p className="mt-4 text-4xl text-white/80">{panggilan.nm_dokter}</p>
+      <div className="flex w-full flex-col items-center">
+        <p className="text-4xl font-semibold tracking-widest text-white/80">PANGGILAN UNTUK</p>
+        {pakaiNomor && (
+          <div className="rs-denyut font-bold leading-none tabular-nums tracking-tight" style={{ fontSize: '18rem' }}>
+            {panggilan.no_reg}
+          </div>
+        )}
+        <p
+          className={`line-clamp-2 max-w-[1700px] font-bold leading-[1.05] ${pakaiNomor ? 'mt-4' : 'rs-denyut mt-6'}`}
+          style={{ fontSize: pakaiNomor ? '6rem' : ukuranNama }}
+        >
+          {namaTampil || '-'}
+        </p>
+        <p className="mt-6 text-4xl text-white/80">{panggilan.nm_dokter}</p>
       </div>
 
-      {multiPoli ? (
-        <p className="text-4xl text-white">Silakan menuju <span className="font-bold">{nm_poli}</span></p>
-      ) : (
-        <p className="text-3xl text-white/80">Silakan menuju ruang periksa</p>
-      )}
+      <p className="text-4xl text-white">Silakan menuju <span className="font-bold">{nm_poli}</span></p>
     </div>
   );
 }

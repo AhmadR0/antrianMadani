@@ -21,6 +21,7 @@ import RunningText from '../components/display/RunningText';
 import LapisanPanggilan from '../components/display/LapisanPanggilan';
 import { API_URL } from '../lib/api';
 
+// Kebijakan RS: pasien dipanggil dengan NAMA, bukan nomor urut; nomor hanya dipakai di poli yang namanya disamarkan.
 // Layar antrian. URL /display/U0003 = satu poli (ruang tunggu poli), /display/U0004,U0005,U0011 =
 // layar koridor untuk beberapa poli (maks 3). Alur: gerbang "Mulai Tampilan" -> mode idle (video)
 // -> saat ada panggilan dari Khanza (lewat backend, SSE), lapisan ambil alih selama DURASI_PANGGIL_MS
@@ -32,7 +33,7 @@ const JEDA_ANTAR_PANGGILAN_MS = 600; // layar multi-poli: jeda antara dua panggi
 const JUMLAH_SEBELUMNYA = 3;
 const MAKS_POLI = 3;
 const RUNNING_TEXT =
-  'Selamat datang di RSUD Madani. Mohon menunggu dengan tenang, nomor antrian akan dipanggil sesuai urutan. ' +
+  'Selamat datang di RSUD Madani. Mohon menunggu dengan tenang, pasien akan dipanggil dengan nama sesuai urutan. ' +
   'Informasi dan pengaduan: (0451) 491605.';
 // Daftar video idle. Kosong = tampil panel pengganti. Nanti diatur lewat halaman pengaturan.
 const PLAYLIST: string[] = [];
@@ -186,15 +187,14 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
     // Bunyikan nomor, lalu nama (tidak di poli yang namanya disamarkan). Mode panggil dipertahankan
     // sampai suaranya selesai kalau itu lebih lama dari durasi minimum.
     const mulai = Date.now();
-    const namaUcap = poli.samarkanNama ? undefined : p.nm_pasien;
-    bunyikanPanggilan(p.no_reg, namaUcap)
+    bunyikanPanggilan({ nama: poli.samarkanNama ? undefined : p.nm_pasien, no_reg: p.no_reg, nm_poli: poli.nm_poli })
       .catch((err) => console.warn('[suara]', err))
       .finally(() => {
         if (sekarangRef.current?.id !== p.id) return; // sudah ada panggilan lain
         const sisa = DURASI_PANGGIL_MS - (Date.now() - mulai);
         pasangTimer(Math.max(sisa, JEDA_SETELAH_SUARA_MS));
       });
-  }, [poli.samarkanNama]);
+  }, [poli.samarkanNama, poli.nm_poli]);
   useEffect(() => () => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
     pemutarSuara.hentikan();
@@ -235,7 +235,7 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
         <>
           {/* Dengan video: nomor di kiri, video di kanan, dokter di bawah */}
           <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
-            <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} />
+            <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} pakaiNomor={!!poli.samarkanNama} namaSebelumnya={(p) => namaUntukTampil(poli, p)} />
             <AreaVideo playlist={PLAYLIST} senyap={modePanggil} bisu={!pengaturan.suaraVideo} />
           </div>
           <section>
@@ -260,7 +260,7 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
         <>
           {/* Tanpa video (TV berhadapan): nomor di kiri, dokter mengisi kolom kanan, bertumpuk */}
           <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
-            <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} />
+            <PanelPanggilan sekarang={sekarang} namaTampil={namaTampil} sebelumnya={sebelumnya} pakaiNomor={!!poli.samarkanNama} namaSebelumnya={(p) => namaUntukTampil(poli, p)} />
             <section className="flex min-h-0 flex-col">
               <p className="mb-3 text-xl font-semibold tracking-widest text-rs-tinta-lembut">DOKTER BERTUGAS HARI INI</p>
               {dokter.length === 0 ? (
@@ -286,7 +286,7 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
       <RunningText teks={RUNNING_TEXT} />
 
       {modePanggil && sekarang && (
-        <LapisanPanggilan panggilan={sekarang} nm_poli={poli.nm_poli} namaTampil={namaTampil} />
+        <LapisanPanggilan panggilan={sekarang} nm_poli={poli.nm_poli} namaTampil={namaTampil} pakaiNomor={!!poli.samarkanNama} />
       )}
 
       {status === 'terputus' && <PilKoneksiPutus />}
@@ -337,8 +337,7 @@ function TampilanMultiPoli({ daftar, judul, pengaturan, demo, dev }: {
     const poli = poliDari(p.kd_poli);
     const mulai = Date.now();
     let timerMinimal: number | null = window.setTimeout(() => { timerMinimal = null; }, DURASI_PANGGIL_MS);
-    const namaUcap = poli?.samarkanNama ? undefined : p.nm_pasien;
-    bunyikanPanggilan(p.no_reg, namaUcap, poli?.nm_poli)
+    bunyikanPanggilan({ nama: poli?.samarkanNama ? undefined : p.nm_pasien, no_reg: p.no_reg, nm_poli: poli?.nm_poli ?? p.nm_poli })
       .catch((err) => console.warn('[suara]', err))
       .finally(() => {
         if (aktifRef.current?.id !== p.id) return;
@@ -395,6 +394,7 @@ function TampilanMultiPoli({ daftar, judul, pengaturan, demo, dev }: {
         poli={poli}
         sekarang={p}
         namaTampil={p ? namaUntukTampil(poli, p) : ''}
+        pakaiNomor={!!poli.samarkanNama}
         dokter={dokter[poli.kd_poli] ?? []}
         now={now}
         mode={mode}
@@ -425,6 +425,7 @@ function TampilanMultiPoli({ daftar, judul, pengaturan, demo, dev }: {
           panggilan={aktif}
           nm_poli={poliAktif.nm_poli}
           namaTampil={namaUntukTampil(poliAktif, aktif)}
+          pakaiNomor={!!poliAktif.samarkanNama}
           multiPoli={{ Ikon: poliAktif.ikon, warnaLatar: poliAktif.warnaLatar }}
         />
       )}
