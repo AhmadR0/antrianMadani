@@ -21,9 +21,13 @@ export type DokterBertugas = {
   foto?: string;       // path relatif ke backend, mis. "/foto/alfrida.jpg"; kosong = avatar inisial
 };
 
-// Dikirim backend lewat event SSE "state" dan GET /antrian/state
-export type KeadaanAntrian = {
+// Keadaan satu poli, dikirim backend lewat event SSE "state" dan GET /antrian/state
+export type KeadaanPoli = {
   kd_poli: string;
   terakhir: Panggilan | null;
   riwayat: Panggilan[]; // terbaru dulu, termasuk `terakhir`
 };
+export type KeadaanAntrian = { poli: KeadaanPoli[] };
+
+// GET /antrian/dokter?poli=a,b
+export type DokterPerPoli = { poli: { kd_poli: string; dokter: DokterBertugas[] }[] };

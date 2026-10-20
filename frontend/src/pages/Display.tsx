@@ -15,18 +15,22 @@ import KanvasTV from '../components/ui/KanvasTV';
 import GerbangMulai from '../components/display/GerbangMulai';
 import PanelPanggilan from '../components/display/PanelPanggilan';
 import KartuDokter from '../components/display/KartuDokter';
+import KartuPoli from '../components/display/KartuPoli';
 import AreaVideo from '../components/display/AreaVideo';
 import RunningText from '../components/display/RunningText';
 import LapisanPanggilan from '../components/display/LapisanPanggilan';
 import { API_URL } from '../lib/api';
 
-// Layar antrian satu poli. Alur: gerbang "Mulai Tampilan" -> mode idle (video bersuara)
-// -> saat ada panggilan dari Khanza (lewat backend, SSE), mode panggil selama DURASI_PANGGIL_MS
-// (video senyap, nomor berkedip) -> idle. Dokter bertugas dari jadwal Khanza lewat backend.
+// Layar antrian. URL /display/U0003 = satu poli (ruang tunggu poli), /display/U0004,U0005,U0011 =
+// layar koridor untuk beberapa poli (maks 3). Alur: gerbang "Mulai Tampilan" -> mode idle (video)
+// -> saat ada panggilan dari Khanza (lewat backend, SSE), lapisan ambil alih selama DURASI_PANGGIL_MS
+// atau sampai suaranya selesai -> idle. Dokter bertugas dari jadwal Khanza lewat backend.
 
 const DURASI_PANGGIL_MS = 8000;      // minimal; diperpanjang kalau suaranya lebih lama
 const JEDA_SETELAH_SUARA_MS = 1500;
+const JEDA_ANTAR_PANGGILAN_MS = 600; // layar multi-poli: jeda antara dua panggilan yang bergiliran
 const JUMLAH_SEBELUMNYA = 3;
+const MAKS_POLI = 3;
 const RUNNING_TEXT =
   'Selamat datang di RSUD Madani. Mohon menunggu dengan tenang, nomor antrian akan dipanggil sesuai urutan. ' +
   'Informasi dan pengaduan: (0451) 491605.';
@@ -35,6 +39,7 @@ const PLAYLIST: string[] = [];
 
 // Kelas kolom ditulis lengkap supaya terdeteksi Tailwind.
 const KOLOM_DOKTER: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
+const KOLOM_POLI: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
 
 // Tombol "kembali" di berbagai remote/browser TV: Escape, Backspace, Android TV (461), Tizen (10009), webOS (461).
 function tombolKembali(e: KeyboardEvent): boolean {
@@ -56,11 +61,17 @@ async function simulasiPanggil(kd_poli: string) {
   }
 }
 
+const namaUntukTampil = (poli: Poli, p: Panggilan) => (poli.samarkanNama ? samarkanNama(p.nm_pasien) : p.nm_pasien);
+
 export default function Display() {
   const { kd_poli } = useParams<{ kd_poli: string }>();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const poli = cariPoli(kd_poli);
+
+  // "U0003" atau "U0004,U0005,U0011" -> daftar poli yang dikenal
+  const daftarKd = [...new Set((kd_poli ?? '').split(',').map((k) => k.trim()).filter(Boolean))].slice(0, MAKS_POLI);
+  const daftarPoli = daftarKd.map(cariPoli).filter((p): p is Poli => !!p);
+  const semuaDikenal = daftarPoli.length === daftarKd.length && daftarPoli.length > 0;
 
   // Hanya di dev: ?mulai=1 lewati gerbang, ?demo=1 langsung simulasi satu panggilan.
   const dev = import.meta.env.DEV;
@@ -90,7 +101,7 @@ export default function Display() {
     navigate('/');
   };
 
-  if (!poli) {
+  if (!semuaDikenal) {
     return (
       <div className="relative flex min-h-screen w-screen flex-col items-center justify-center gap-6 p-10 text-center">
         <LatarMedis />
@@ -100,14 +111,17 @@ export default function Display() {
     );
   }
 
+  const pertama = daftarPoli[0];
+  const judul = daftarPoli.map((p) => p.nm_poli).join(' · ');
+
   if (!mulai) {
     return (
       <KanvasTV>
       <GerbangMulai
-        nm_poli={poli.nm_poli}
-        Ikon={poli.ikon}
-        warnaLembut={poli.warnaLembut}
-        warnaKuat={poli.warnaKuat}
+        nm_poli={judul}
+        Ikon={pertama.ikon}
+        warnaLembut={pertama.warnaLembut}
+        warnaKuat={pertama.warnaKuat}
         pengaturan={pengaturan}
         onUbahPengaturan={ubahPengaturan}
         onMulai={() => { void siapkanSuara(); setMulai(true); }} // siapkan audio selagi masih ada gestur pengguna
@@ -117,9 +131,31 @@ export default function Display() {
     );
   }
 
-  return <TampilanPoli poli={poli} pengaturan={pengaturan} demo={dev && params.get('demo') === '1'} dev={dev} />;
+  const demo = dev && params.get('demo') === '1';
+  return daftarPoli.length === 1
+    ? <TampilanPoli poli={pertama} pengaturan={pengaturan} demo={demo} dev={dev} />
+    : <TampilanMultiPoli daftar={daftarPoli} judul={judul} pengaturan={pengaturan} demo={demo} dev={dev} />;
 }
 
+// Jam sekarang, diperbarui tiap 30 detik, untuk tanda "sedang praktik".
+function useJamSekarang() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+function PilKoneksiPutus() {
+  return (
+    <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-rose-600 px-4 py-1.5 text-base font-semibold text-white shadow-lg">
+      <WifiOff className="h-4 w-4" /> Koneksi ke server antrian terputus, mencoba menyambung…
+    </div>
+  );
+}
+
+// ======================= SATU POLI (ruang tunggu poli) =======================
 // Bagian yang terhubung ke backend; dipasang hanya setelah gerbang dilewati.
 function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan: PengaturanTv; demo: boolean; dev: boolean }) {
   const [sekarang, setSekarang] = useState<Panggilan | null>(null);
@@ -164,37 +200,30 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
     pemutarSuara.hentikan();
   }, []);
 
-  const { keadaan, status } = useAntrianEvents(poli.kd_poli, terimaPanggilan);
-  const dokter = useDokterBertugas(poli.kd_poli);
+  const { keadaan, status } = useAntrianEvents([poli.kd_poli], terimaPanggilan);
+  const dokter = useDokterBertugas([poli.kd_poli])[poli.kd_poli] ?? [];
 
   // Saat koneksi (ulang) dibuka, backend mengirim keadaan poli: tampilkan tanpa mode panggil.
   // Panggilan yang masuk lewat event "panggil" sudah ditangani terimaPanggilan, jadi di sini id-nya sama dan dilewati.
+  const keadaanPoli = keadaan[poli.kd_poli];
   useEffect(() => {
-    if (!keadaan?.terakhir) return;
-    const t = keadaan.terakhir;
+    if (!keadaanPoli?.terakhir) return;
+    const t = keadaanPoli.terakhir;
     if (sekarangRef.current?.id === t.id) return;
     sekarangRef.current = t;
     setSekarang(t);
-    setSebelumnya(keadaan.riwayat.filter((p) => p.id !== t.id).slice(0, JUMLAH_SEBELUMNYA));
-  }, [keadaan]);
+    setSebelumnya(keadaanPoli.riwayat.filter((p) => p.id !== t.id).slice(0, JUMLAH_SEBELUMNYA));
+  }, [keadaanPoli]);
 
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(t);
-  }, []);
-
+  const now = useJamSekarang();
   const simulasi = useCallback(() => { void simulasiPanggil(poli.kd_poli); }, [poli.kd_poli]);
-
   useEffect(() => {
     if (!demo) return;
     const t = window.setTimeout(simulasi, 800);
     return () => window.clearTimeout(t);
   }, [demo, simulasi]);
 
-  const namaTampil = sekarang
-    ? (poli.samarkanNama ? samarkanNama(sekarang.nm_pasien) : sekarang.nm_pasien)
-    : '';
+  const namaTampil = sekarang ? namaUntukTampil(poli, sekarang) : '';
 
   return (
     <KanvasTV>
@@ -260,11 +289,7 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
         <LapisanPanggilan panggilan={sekarang} nm_poli={poli.nm_poli} namaTampil={namaTampil} />
       )}
 
-      {status === 'terputus' && (
-        <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-rose-600 px-4 py-1.5 text-base font-semibold text-white shadow-lg">
-          <WifiOff className="h-4 w-4" /> Koneksi ke server antrian terputus, mencoba menyambung…
-        </div>
-      )}
+      {status === 'terputus' && <PilKoneksiPutus />}
 
       {dev && (
         <button
@@ -274,6 +299,151 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
         >
           DEV: simulasi panggil
         </button>
+      )}
+    </div>
+    </KanvasTV>
+  );
+}
+
+// ======================= BEBERAPA POLI (layar koridor) =======================
+// Panggilan dari poli mana pun masuk ke antrean dan ditampilkan bergiliran, masing-masing minimal
+// DURASI_PANGGIL_MS atau sampai suaranya selesai. Kartu per poli langsung diperbarui begitu panggilan masuk.
+function TampilanMultiPoli({ daftar, judul, pengaturan, demo, dev }: {
+  daftar: Poli[]; judul: string; pengaturan: PengaturanTv; demo: boolean; dev: boolean;
+}) {
+  const daftarKd = daftar.map((p) => p.kd_poli);
+  const poliDari = (kd: string) => daftar.find((p) => p.kd_poli === kd);
+
+  const [sekarang, setSekarang] = useState<Record<string, Panggilan | null>>({});
+  const [aktif, setAktif] = useState<Panggilan | null>(null); // yang sedang ditampilkan di lapisan panggilan
+  const aktifRef = useRef<Panggilan | null>(null);
+  const antreanRef = useRef<Panggilan[]>([]);
+  const timerRef = useRef<number | null>(null);
+
+  const selesaikanAktif = useCallback(() => {
+    aktifRef.current = null;
+    setAktif(null);
+    timerRef.current = window.setTimeout(() => prosesAntrean(), JEDA_ANTAR_PANGGILAN_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ambil panggilan berikutnya dari antrean, tampilkan, bunyikan; selesai -> giliran berikutnya.
+  const prosesAntrean = useCallback(() => {
+    if (aktifRef.current) return;
+    const p = antreanRef.current.shift();
+    if (!p) return;
+    aktifRef.current = p;
+    setAktif(p);
+    const poli = poliDari(p.kd_poli);
+    const mulai = Date.now();
+    let timerMinimal: number | null = window.setTimeout(() => { timerMinimal = null; }, DURASI_PANGGIL_MS);
+    const namaUcap = poli?.samarkanNama ? undefined : p.nm_pasien;
+    bunyikanPanggilan(p.no_reg, namaUcap, poli?.nm_poli)
+      .catch((err) => console.warn('[suara]', err))
+      .finally(() => {
+        if (aktifRef.current?.id !== p.id) return;
+        const sisa = DURASI_PANGGIL_MS - (Date.now() - mulai);
+        if (timerMinimal) window.clearTimeout(timerMinimal);
+        if (timerRef.current) window.clearTimeout(timerRef.current);
+        timerRef.current = window.setTimeout(selesaikanAktif, Math.max(sisa, JEDA_SETELAH_SUARA_MS));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selesaikanAktif]);
+
+  const terimaPanggilan = useCallback((p: Panggilan) => {
+    setSekarang((s) => ({ ...s, [p.kd_poli]: p }));
+    antreanRef.current.push(p);
+    prosesAntrean();
+  }, [prosesAntrean]);
+
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    pemutarSuara.hentikan();
+  }, []);
+
+  const { keadaan, status } = useAntrianEvents(daftarKd, terimaPanggilan);
+  const dokter = useDokterBertugas(daftarKd);
+
+  // Keadaan awal / sambung ulang: isi nomor terakhir tiap poli tanpa membunyikan.
+  useEffect(() => {
+    setSekarang((s) => {
+      const baru = { ...s };
+      for (const kd of Object.keys(keadaan)) {
+        const t = keadaan[kd].terakhir;
+        if (t && baru[kd]?.id !== t.id) baru[kd] = t;
+      }
+      return baru;
+    });
+  }, [keadaan]);
+
+  const now = useJamSekarang();
+  useEffect(() => {
+    if (!demo) return;
+    const t = window.setTimeout(() => { void simulasiPanggil(daftarKd[0]); }, 800);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo]);
+
+  const poliAktif = aktif ? poliDari(aktif.kd_poli) : undefined;
+  const modePanggil = !!aktif;
+
+  const kartu = (mode: 'tumpuk' | 'kolom') => daftar.map((poli) => {
+    const p = sekarang[poli.kd_poli] ?? null;
+    return (
+      <KartuPoli
+        key={poli.kd_poli}
+        poli={poli}
+        sekarang={p}
+        namaTampil={p ? namaUntukTampil(poli, p) : ''}
+        dokter={dokter[poli.kd_poli] ?? []}
+        now={now}
+        mode={mode}
+        jumlahPoli={daftar.length}
+      />
+    );
+  });
+
+  return (
+    <KanvasTV>
+    <div className="relative grid h-full w-full grid-rows-[auto_1fr_auto] gap-6 overflow-hidden px-12 pb-6">
+      <LatarMedis />
+      <HeaderRS judul={judul} subjudul="RSUD Madani · Layar koridor" />
+
+      {pengaturan.video ? (
+        <div className="grid min-h-0 grid-cols-[1fr_1fr] gap-6">
+          <div className="flex min-h-0 flex-col gap-4">{kartu('tumpuk')}</div>
+          <AreaVideo playlist={PLAYLIST} senyap={modePanggil} bisu={!pengaturan.suaraVideo} />
+        </div>
+      ) : (
+        <div className={`grid min-h-0 gap-6 ${KOLOM_POLI[daftar.length] ?? 'grid-cols-3'}`}>{kartu('kolom')}</div>
+      )}
+
+      <RunningText teks={RUNNING_TEXT} />
+
+      {aktif && poliAktif && (
+        <LapisanPanggilan
+          panggilan={aktif}
+          nm_poli={poliAktif.nm_poli}
+          namaTampil={namaUntukTampil(poliAktif, aktif)}
+          multiPoli={{ Ikon: poliAktif.ikon, warnaLatar: poliAktif.warnaLatar }}
+        />
+      )}
+
+      {status === 'terputus' && <PilKoneksiPutus />}
+
+      {dev && (
+        <div className="absolute right-12 top-3 flex gap-2">
+          {daftar.map((p) => (
+            <button
+              key={p.kd_poli}
+              type="button"
+              onClick={() => { void simulasiPanggil(p.kd_poli); }}
+              className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold text-amber-950 shadow opacity-60 hover:opacity-100"
+            >
+              DEV: panggil {p.kd_poli}
+            </button>
+          ))}
+        </div>
       )}
     </div>
     </KanvasTV>

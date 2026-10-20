@@ -5,34 +5,41 @@ import { antrianStore } from '../services/antrian/store';
 import { ambilDokterBertugas } from '../services/antrian/dokter';
 import { Panggilan } from '../services/antrian/types';
 
-// Satu layar TV = satu poli. Semua endpoint di sini menerima ?poli=U0003.
+// Satu layar TV melayani satu atau beberapa poli (layar koridor, maks MAKS_POLI).
+// Semua endpoint di sini menerima ?poli=U0003 atau ?poli=U0004,U0005,U0011.
 
 const route = express.Router();
 const POLA_KD_POLI = /^[A-Za-z0-9]{1,5}$/;
+const MAKS_POLI = 3;
 
-const ambilKdPoli = (req: Request, res: Response): string | null => {
-  const kd = String(req.query.poli ?? '').trim();
-  if (!POLA_KD_POLI.test(kd)) { res.status(400).json({ error: 'parameter poli (kd_poli) wajib' }); return null; }
-  return kd;
+const ambilDaftarPoli = (req: Request, res: Response): string[] | null => {
+  const daftar = [...new Set(String(req.query.poli ?? '').split(',').map((k) => k.trim()).filter(Boolean))];
+  if (daftar.length === 0 || daftar.some((k) => !POLA_KD_POLI.test(k))) {
+    res.status(400).json({ error: 'parameter poli (kd_poli, boleh beberapa dipisah koma) wajib' }); return null;
+  }
+  if (daftar.length > MAKS_POLI) { res.status(400).json({ error: `maksimal ${MAKS_POLI} poli per layar` }); return null; }
+  return daftar;
 };
 
-const keadaan = (kd_poli: string) => ({
+const keadaanPoli = (kd_poli: string) => ({
   kd_poli,
   terakhir: antrianStore.terakhir(kd_poli),
   riwayat: antrianStore.riwayatUntuk(kd_poli),
 });
+const keadaan = (daftar: string[]) => ({ poli: daftar.map(keadaanPoli) });
 
-// Keadaan saat ini: panggilan terakhir + riwayat poli, untuk saat TV baru dibuka
+// Keadaan saat ini: panggilan terakhir + riwayat tiap poli, untuk saat TV baru dibuka
 route.get('/state', (req, res) => {
-  const kd = ambilKdPoli(req, res); if (!kd) return;
-  res.json(keadaan(kd));
+  const daftar = ambilDaftarPoli(req, res); if (!daftar) return;
+  res.json(keadaan(daftar));
 });
 
-// Dokter yang bertugas hari ini di poli ini (jadwal Khanza + foto pegawai)
+// Dokter yang bertugas hari ini di tiap poli (jadwal Khanza + foto pegawai)
 route.get('/dokter', async (req, res) => {
-  const kd = ambilKdPoli(req, res); if (!kd) return;
+  const daftar = ambilDaftarPoli(req, res); if (!daftar) return;
   try {
-    res.json(await ambilDokterBertugas(kd));
+    const hasil = await Promise.all(daftar.map(async (kd_poli) => ({ kd_poli, dokter: await ambilDokterBertugas(kd_poli) })));
+    res.json({ poli: hasil });
   } catch (e) {
     console.error('[antrian/dokter]', e);
     res.status(500).json({ error: 'gagal mengambil dokter bertugas' });
@@ -41,7 +48,8 @@ route.get('/dokter', async (req, res) => {
 
 // Server-Sent Events: TV membuka satu koneksi dan menerima event "state" lalu "panggil"
 route.get('/events', (req, res) => {
-  const kd = ambilKdPoli(req, res); if (!kd) return;
+  const daftar = ambilDaftarPoli(req, res); if (!daftar) return;
+  const poliSet = new Set(daftar);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -53,9 +61,9 @@ route.get('/events', (req, res) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  kirim('state', keadaan(kd));
+  kirim('state', keadaan(daftar));
 
-  const onPanggil = (p: Panggilan) => { if (p.kd_poli === kd) kirim('panggil', p); };
+  const onPanggil = (p: Panggilan) => { if (poliSet.has(p.kd_poli)) kirim('panggil', p); };
   antrianStore.on('panggil', onPanggil);
   const heartbeat = setInterval(() => res.write(': ping\n\n'), 20000);
 

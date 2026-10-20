@@ -56,7 +56,27 @@ const LAYAR_INFO: Layar[] = [
 ];
 
 const SEMUA_LAYAR = [...LAYAR_POLI, ...LAYAR_INFO];
-const cariLayar = (path: string | null) => SEMUA_LAYAR.find((l) => l.path === path) ?? null;
+const MAKS_POLI = 3;
+
+// Path tersimpan -> Layar. Path gabungan "display/U0004,U0005,U0011" (layar koridor) dirakit dari poli-polinya.
+function cariLayar(path: string | null): Layar | null {
+  if (!path) return null;
+  const langsung = SEMUA_LAYAR.find((l) => l.path === path);
+  if (langsung) return langsung;
+  if (!path.startsWith('display/') || !path.includes(',')) return null;
+  const polis = path.slice('display/'.length).split(',').map((kd) => LAYAR_POLI.find((l) => l.kode === kd));
+  if (polis.length < 2 || polis.length > MAKS_POLI || polis.some((p) => !p)) return null;
+  const daftar = polis as Layar[];
+  return {
+    path,
+    kode: daftar.map((p) => p.kode).join(','),
+    nama: daftar.map((p) => p.nama).join(' · '),
+    ikon: daftar[0].ikon,
+    warnaLembut: daftar[0].warnaLembut,
+    warnaKuat: daftar[0].warnaKuat,
+    keterangan: `Layar koridor, ${daftar.length} poli`,
+  };
+}
 
 function TombolRemote({ children }: { children: React.ReactNode }) {
   return (
@@ -100,6 +120,9 @@ export default function Dashboard() {
   // Layar yang terakhir dipilih di TV ini (kalau ada dan masih dikenal).
   const [tersimpan, setTersimpan] = useState<Layar | null>(() => cariLayar(bacaPilihanLayar()));
   const [sisa, setSisa] = useState(DETIK_HITUNG_MUNDUR);
+  // Poli yang sedang dicentang (urutan pilih = urutan di layar). Maks MAKS_POLI untuk satu layar koridor.
+  const [dipilih, setDipilih] = useState<string[]>([]);
+  const [pesan, setPesan] = useState<string | null>(null);
 
   const bukaLayar = useCallback(
     (layar: Layar) => {
@@ -112,6 +135,21 @@ export default function Dashboard() {
     },
     [navigate],
   );
+
+  // Ubin poli: OK pertama mencentang, OK pada satu-satunya poli yang dicentang membuka layarnya.
+  // Beberapa poli dicentang -> dibuka lewat tombol "Buka layar" sebagai satu layar koridor.
+  const klikPoli = (layar: Layar) => {
+    setPesan(null);
+    if (dipilih.length === 1 && dipilih[0] === layar.kode) { bukaLayar(layar); return; }
+    if (dipilih.includes(layar.kode)) { setDipilih(dipilih.filter((k) => k !== layar.kode)); return; }
+    if (dipilih.length >= MAKS_POLI) { setPesan(`Maksimal ${MAKS_POLI} poli untuk satu layar.`); return; }
+    setDipilih([...dipilih, layar.kode]);
+  };
+  const bukaPilihan = () => {
+    if (dipilih.length === 0) return;
+    const layar = cariLayar(`display/${dipilih.join(',')}`) ?? LAYAR_POLI.find((l) => l.kode === dipilih[0]);
+    if (layar) bukaLayar(layar);
+  };
 
   // Hitung mundur hanya jalan kalau ada pilihan tersimpan.
   useEffect(() => {
@@ -165,7 +203,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-rs-tinta">Pilih layar untuk TV ini</h1>
             <p className="mt-2 text-xl text-rs-tinta-lembut">
-              Pilih poli sesuai ruangan tempat TV ini dipasang, atau layar informasi untuk ruang tunggu umum.
+              Pilih poli sesuai ruangan tempat TV ini dipasang. Untuk layar koridor, centang sampai 3 poli lalu tekan "Buka layar".
             </p>
           </div>
           <div className="flex items-center gap-3 text-base text-rs-tinta-lembut">
@@ -185,9 +223,15 @@ export default function Dashboard() {
                 key={layar.path}
                 ref={(el) => { tombolRef.current[i] = el; }}
                 type="button"
-                onClick={() => bukaLayar(layar)}
-                className={`${KELAS_TOMBOL} flex h-44 flex-col justify-between p-6`}
+                onClick={() => klikPoli(layar)}
+                aria-pressed={dipilih.includes(layar.kode)}
+                className={`${KELAS_TOMBOL} flex h-44 flex-col justify-between p-6 ${dipilih.includes(layar.kode) ? 'border-rs-primer bg-rs-primer-lembut/40' : ''}`}
               >
+                {dipilih.includes(layar.kode) && (
+                  <span className="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full bg-rs-primer text-lg font-bold text-white shadow-md">
+                    {dipilih.indexOf(layar.kode) + 1}
+                  </span>
+                )}
                 <div className="flex items-start justify-between">
                   <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${layar.warnaLembut}`}>
                     <Ikon className={`h-7 w-7 ${layar.warnaKuat}`} strokeWidth={2.2} />
@@ -234,6 +278,35 @@ export default function Dashboard() {
           })}
         </div>
       </main>
+
+      {(dipilih.length > 0 || pesan) && (
+        <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-5 rounded-3xl bg-rs-tinta px-8 py-4 text-white shadow-2xl">
+          {pesan && <span className="text-xl font-semibold text-amber-300">{pesan}</span>}
+          {dipilih.length > 0 && (
+            <>
+              <span className="text-xl">
+                {dipilih.length} poli dipilih
+                {dipilih.length > 1 && <span className="text-white/70"> · satu layar koridor</span>}
+              </span>
+              <button
+                type="button"
+                id="tombol-buka-pilihan"
+                onClick={bukaPilihan}
+                className="rounded-2xl bg-rs-primer px-8 py-3 text-xl font-bold text-white transition hover:bg-rs-primer-gelap focus:outline-none focus:ring-4 focus:ring-white/40"
+              >
+                Buka layar
+              </button>
+              <button
+                type="button"
+                onClick={() => setDipilih([])}
+                className="text-lg text-white/70 underline-offset-4 hover:underline focus:underline focus:outline-none"
+              >
+                Batal
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <footer className="flex items-center gap-2 px-12 pb-6 text-base text-rs-tinta-lembut">
         <Info className="h-5 w-5" />

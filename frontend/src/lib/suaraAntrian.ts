@@ -209,10 +209,13 @@ const tidur = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // Satu panggilan utuh: klip (notif + nomor), lalu ucapan nama kalau diberikan.
 // Resolve setelah semuanya selesai, atau lebih awal kalau dibatalkan oleh panggilan berikutnya.
-export async function bunyikanPanggilan(no_reg: string, namaUcap?: string): Promise<void> {
+// tujuan: nama poli untuk layar multi-poli ("silakan menuju Klinik Bedah"); kosong = "ruang periksa".
+export async function bunyikanPanggilan(no_reg: string, namaUcap?: string, tujuan?: string): Promise<void> {
   const durasiKlip = await pemutarSuara.putar(urutanKlipPanggilan(no_reg));
   const gen = pemutarSuara.generasiSekarang;
   await tidur(durasiKlip + 200);
   if (gen !== pemutarSuara.generasiSekarang) return; // sudah ada panggilan baru
-  if (namaUcap) await ucapkan(`Atas nama ${teksUcapNama(namaUcap)}, silakan menuju ruang periksa.`);
+  const keMana = tujuan ? teksUcapNama(tujuan) : 'ruang periksa';
+  if (namaUcap) await ucapkan(`Atas nama ${teksUcapNama(namaUcap)}, silakan menuju ${keMana}.`);
+  else if (tujuan) await ucapkan(`Silakan menuju ${keMana}.`);
 }

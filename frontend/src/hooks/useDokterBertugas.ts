@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
-import type { DokterBertugas } from '../types/antrian';
+import type { DokterBertugas, DokterPerPoli } from '../types/antrian';
 import { API_URL } from '../lib/api';
 
 const JEDA_POLLING_MS = 5 * 60_000;
 
 /**
- * Dokter yang bertugas hari ini di satu poli, dari GET /antrian/dokter?poli=.
- * Diperbarui tiap 5 menit supaya perubahan jadwal di Khanza dan pergantian hari ikut terbaca.
- * URL foto dari backend bersifat relatif ("/foto/x.jpg"); di sini dilengkapi dengan alamat backend.
+ * Dokter yang bertugas hari ini di satu atau beberapa poli, dari GET /antrian/dokter?poli=a,b.
+ * Hasil diindeks per kd_poli. Diperbarui tiap 5 menit supaya perubahan jadwal di Khanza dan
+ * pergantian hari ikut terbaca. URL foto dari backend relatif ("/foto/x.jpg"); dilengkapi di sini.
  */
-export function useDokterBertugas(kd_poli: string) {
-  const [dokter, setDokter] = useState<DokterBertugas[]>([]);
+export function useDokterBertugas(daftarPoli: string[]) {
+  const [dokter, setDokter] = useState<Record<string, DokterBertugas[]>>({});
+  const kunci = daftarPoli.join(',');
 
   useEffect(() => {
     let hidup = true;
@@ -18,11 +19,14 @@ export function useDokterBertugas(kd_poli: string) {
 
     const ambil = async () => {
       try {
-        const res = await fetch(`${API_URL}/antrian/dokter?poli=${encodeURIComponent(kd_poli)}`);
+        const res = await fetch(`${API_URL}/antrian/dokter?poli=${encodeURIComponent(kunci)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as DokterBertugas[];
+        const json = (await res.json()) as DokterPerPoli;
         if (!hidup) return;
-        setDokter(json.map((d) => (d.foto ? { ...d, foto: `${API_URL}${d.foto}` } : d)));
+        setDokter(Object.fromEntries(json.poli.map((p) => [
+          p.kd_poli,
+          p.dokter.map((d) => (d.foto ? { ...d, foto: `${API_URL}${d.foto}` } : d)),
+        ])));
       } catch (err) {
         console.error('[antrian/dokter]', err);
       } finally {
@@ -35,7 +39,7 @@ export function useDokterBertugas(kd_poli: string) {
       hidup = false;
       if (timer) clearTimeout(timer);
     };
-  }, [kd_poli]);
+  }, [kunci]);
 
   return dokter;
 }
