@@ -246,12 +246,13 @@ const JEDA_ULANG_MS = 2500;     // jeda antara ulangan
 
 // Satu panggilan utuh. Kebijakan RS: pasien dipanggil dengan NAMA, bukan nomor urut, dan diulang ULANG_PANGGILAN kali:
 //   bel -> "Atas nama <nama>, silakan menuju Poli <poli>" -> jeda -> kalimat lagi
-// Kalau nama tidak boleh disebut (poli yang disamarkan), nomor urut dipakai sebagai pengganti:
-//   bel -> klip "nomor urut <angka>" -> "Silakan menuju Poli <poli>" -> jeda -> klip nomor -> kalimat lagi
+// Kalau nama tidak boleh disebut (poli yang disamarkan), nomor urut dipakai sebagai pengganti. Supaya suaranya
+// satu (konsisten), MP3 server sudah berisi "Nomor urut 90, silakan menuju Poli Jiwa"; klip angka Khanza hanya
+// dipakai kalau MP3 server tidak ada:  bel -> klip "nomor urut <angka>" -> TTS "Silakan menuju Poli <poli>".
 // Kalimatnya diutamakan dari MP3 buatan server (suaraUrl); kalau tidak ada / gagal, TTS browser; kalau itu pun tidak ada, diam.
 // Resolve setelah semuanya selesai, atau lebih awal kalau dibatalkan oleh panggilan berikutnya.
 export async function bunyikanPanggilan(opsi: { nama?: string; no_reg: string; nm_poli: string; suaraUrl?: string }): Promise<void> {
-  const klipNomor = opsi.nama ? [] : urutanKlipPanggilan(opsi.no_reg).filter((k) => k !== 'notif');
+  const klipNomor = opsi.nama || opsi.suaraUrl ? [] : urutanKlipPanggilan(opsi.no_reg).filter((k) => k !== 'notif');
   const durasiAwal = await pemutarSuara.putar(['notif', ...klipNomor]);
   const gen = pemutarSuara.generasiSekarang;
   const masihAktif = () => gen === pemutarSuara.generasiSekarang;

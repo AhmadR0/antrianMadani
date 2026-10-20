@@ -25,7 +25,12 @@ export const teksUcapPoli = (nm_poli: string): string =>
 
 // Kalimat panggilan. Kebijakan RS: pasien dipanggil dengan NAMA. Di poli yang namanya disamarkan,
 // nama tidak disebut (nomor urutnya dibunyikan TV dari klip lokal), hanya arah tujuan.
-export const kalimatPanggilan = (nm_pasien: string, nm_poli: string, sebutNama: boolean): string =>
-  sebutNama
-    ? `Atas nama ${teksUcapNama(nm_pasien)}, silakan menuju ${teksUcapPoli(nm_poli)}.`
-    : `Silakan menuju ${teksUcapPoli(nm_poli)}.`;
+// Nomor urut "090" -> 90, dibaca mesin TTS sebagai "sembilan puluh".
+const angkaUrut = (no_reg: string): number => parseInt((no_reg ?? '').replace(/\D/g, '') || '0', 10);
+
+export const kalimatPanggilan = (nm_pasien: string, nm_poli: string, sebutNama: boolean, no_reg = ''): string => {
+  const tujuan = teksUcapPoli(nm_poli);
+  if (sebutNama) return `Atas nama ${teksUcapNama(nm_pasien)}, silakan menuju ${tujuan}.`;
+  const n = angkaUrut(no_reg);
+  return n > 0 ? `Nomor urut ${n}, silakan menuju ${tujuan}.` : `Silakan menuju ${tujuan}.`;
+};

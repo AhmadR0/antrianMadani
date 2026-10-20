@@ -88,7 +88,7 @@ export async function pollSekali(): Promise<number> {
     };
     // Suara kalimat panggilan dibuat di server (cache; menunggu paling lama ~3 detik). Hanya untuk yang diumumkan.
     if (umumkan) {
-      p.suara_nama = await buatSuara(kalimatPanggilan(p.nm_pasien, p.nm_poli, !POLI_SAMARKAN.has(p.kd_poli)));
+      p.suara_nama = await buatSuara(kalimatPanggilan(p.nm_pasien, p.nm_poli, !POLI_SAMARKAN.has(p.kd_poli), p.no_reg));
     }
     antrianStore.catat(p, umumkan);
     diproses++;
