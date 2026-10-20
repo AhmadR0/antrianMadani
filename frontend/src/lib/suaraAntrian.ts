@@ -112,9 +112,9 @@ class PemutarSuara {
   }
 
   // Memutar klip berurutan. Mengembalikan perkiraan durasi total (ms) segera, tanpa menunggu selesai.
-  async putar(klip: string[]): Promise<number> {
+  async putar(klip: string[], lanjutan = false): Promise<number> {
     await this.siapkan();
-    this.hentikan();
+    if (!lanjutan) this.hentikan();
     const gen = this.generasi;
 
     if (this.ctx) {
@@ -241,30 +241,50 @@ const tidur = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export const teksUcapPoli = (nm_poli: string) =>
   'Poli ' + teksUcapNama(nm_poli.replace(/^\s*(klinik|poli)\s+/i, ''));
 
-// Satu panggilan utuh. Kebijakan RS: pasien dipanggil dengan NAMA, bukan nomor urut.
-//   bel -> "Atas nama <nama>, silakan menuju Poli <poli>"
+const ULANG_PANGGILAN = 2;      // kalimat panggilan dibunyikan dua kali
+const JEDA_ULANG_MS = 2500;     // jeda antara ulangan
+
+// Satu panggilan utuh. Kebijakan RS: pasien dipanggil dengan NAMA, bukan nomor urut, dan diulang ULANG_PANGGILAN kali:
+//   bel -> "Atas nama <nama>, silakan menuju Poli <poli>" -> jeda -> kalimat lagi
 // Kalau nama tidak boleh disebut (poli yang disamarkan), nomor urut dipakai sebagai pengganti:
-//   bel -> klip "nomor urut <angka>" -> "Silakan menuju Poli <poli>"
+//   bel -> klip "nomor urut <angka>" -> "Silakan menuju Poli <poli>" -> jeda -> klip nomor -> kalimat lagi
 // Kalimatnya diutamakan dari MP3 buatan server (suaraUrl); kalau tidak ada / gagal, TTS browser; kalau itu pun tidak ada, diam.
 // Resolve setelah semuanya selesai, atau lebih awal kalau dibatalkan oleh panggilan berikutnya.
 export async function bunyikanPanggilan(opsi: { nama?: string; no_reg: string; nm_poli: string; suaraUrl?: string }): Promise<void> {
-  const klip = opsi.nama ? ['notif'] : urutanKlipPanggilan(opsi.no_reg);
-  const durasiKlip = await pemutarSuara.putar(klip);
+  const klipNomor = opsi.nama ? [] : urutanKlipPanggilan(opsi.no_reg).filter((k) => k !== 'notif');
+  const durasiAwal = await pemutarSuara.putar(['notif', ...klipNomor]);
   const gen = pemutarSuara.generasiSekarang;
-  await tidur(durasiKlip + 200);
-  if (gen !== pemutarSuara.generasiSekarang) return; // sudah ada panggilan baru
+  const masihAktif = () => gen === pemutarSuara.generasiSekarang;
+  await tidur(durasiAwal + 200);
+  if (!masihAktif()) return; // sudah ada panggilan baru
 
-  if (opsi.suaraUrl) {
-    try {
-      console.info('[suara] mp3 server:', opsi.suaraUrl);
-      await pemutarSuara.putarUrl(opsi.suaraUrl);
-      return;
-    } catch (err) {
-      console.warn('[suara] mp3 server gagal, pakai TTS browser:', (err as Error).message);
-      if (gen !== pemutarSuara.generasiSekarang) return;
+  const kalimat = async () => {
+    if (opsi.suaraUrl) {
+      try {
+        console.info('[suara] mp3 server:', opsi.suaraUrl);
+        await pemutarSuara.putarUrl(opsi.suaraUrl);
+        return;
+      } catch (err) {
+        console.warn('[suara] mp3 server gagal, pakai TTS browser:', (err as Error).message);
+        if (!masihAktif()) return;
+      }
     }
+    const tujuan = teksUcapPoli(opsi.nm_poli);
+    if (opsi.nama) await ucapkan(`Atas nama ${teksUcapNama(opsi.nama)}, silakan menuju ${tujuan}.`);
+    else await ucapkan(`Silakan menuju ${tujuan}.`);
+  };
+
+  for (let ke = 1; ke <= ULANG_PANGGILAN; ke++) {
+    if (ke > 1) {
+      await tidur(JEDA_ULANG_MS);
+      if (!masihAktif()) return;
+      if (klipNomor.length) {
+        const d = await pemutarSuara.putar(klipNomor, true);
+        await tidur(d + 200);
+        if (!masihAktif()) return;
+      }
+    }
+    await kalimat();
+    if (!masihAktif()) return;
   }
-  const tujuan = teksUcapPoli(opsi.nm_poli);
-  if (opsi.nama) await ucapkan(`Atas nama ${teksUcapNama(opsi.nama)}, silakan menuju ${tujuan}.`);
-  else await ucapkan(`Silakan menuju ${tujuan}.`);
 }
