@@ -1,8 +1,6 @@
 import express from "express";
 import cors from 'cors';
 import dotenv from 'dotenv';
-import dokteRoutes from '../src/routes/dokterRoutes'
-import tesApiRoutes from '../src/routes/tesORMRoutes'
 import antrianRoutes from './routes/antrianRoutes'
 import infoRoutes from './routes/infoRoutes'
 import { FOTO_PEGAWAI_DIR } from './services/antrian/dokter'
@@ -16,8 +14,6 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}))
 
 
-app.use("/getDokter",dokteRoutes)
-app.use('/tesApi',tesApiRoutes)
 app.use('/antrian', antrianRoutes)
 app.use('/info', infoRoutes)
 // Untuk healthcheck Docker / pemantauan: 200 kalau proses hidup dan database bisa dijawab.

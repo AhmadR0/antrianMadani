@@ -75,7 +75,9 @@ route.get('/events', (req, res) => {
 
 // Simulasi klik "Antrian Masuk Poli" di Khanza, untuk pengembangan tanpa membuka Khanza.
 // Body: { kd_poli, kd_dokter?, no_rawat? }. Kalau no_rawat kosong, dipilih registrasi terbaru di poli itu.
+// HANYA di luar produksi: endpoint ini MENULIS ke antripoli Khanza. Di NODE_ENV=production dijawab 404.
 route.post('/simulasi/panggil', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') { res.status(404).json({ error: 'tidak tersedia di produksi' }); return; }
   const { kd_poli, kd_dokter, no_rawat } = req.body as { kd_poli?: string; kd_dokter?: string; no_rawat?: string };
   if (!kd_poli) { res.status(400).json({ error: 'kd_poli wajib' }); return; }
   try {
