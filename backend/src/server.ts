@@ -1,6 +1,7 @@
 import app from './app';
 import { sequelize } from './config/databases';
 import { hentikanPoller, mulaiPoller } from './services/antrian/poller';
+import { mulaiPembersihCache } from './services/antrian/suaraNama';
 
 const PORT = Number(process.env.PORT || 8000);
 
@@ -20,6 +21,7 @@ async function startServer() {
   const server = app.listen(PORT, () => {
     console.log(`Server berjalan di port ${PORT}`);
     mulaiPoller();
+    mulaiPembersihCache();
   });
 
   server.on('error', (err: NodeJS.ErrnoException) => {

@@ -9,4 +9,5 @@ export type Panggilan = {
   no_reg: string;        // nomor antrian Khanza (unik per hari per dokter/poli)
   nm_pasien: string;     // sudah diformat untuk display/suara (Tn. -> Tuan, dst.)
   tgl_registrasi: string | null;
+  suara_nama?: string;   // path MP3 kalimat panggilan buatan server, mis. "/suara-nama/<hash>.mp3"
 };

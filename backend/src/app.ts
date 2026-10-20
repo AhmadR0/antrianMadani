@@ -6,6 +6,7 @@ import tesApiRoutes from '../src/routes/tesORMRoutes'
 import antrianRoutes from './routes/antrianRoutes'
 import infoRoutes from './routes/infoRoutes'
 import { FOTO_PEGAWAI_DIR } from './services/antrian/dokter'
+import { SUARA_CACHE_DIR } from './services/antrian/suaraNama'
 import { sequelize } from './config/databases'
 dotenv.config();
 
@@ -30,5 +31,7 @@ app.get('/health', async (_req, res) => {
 })
 // Foto pegawai Khanza (folder diatur lewat FOTO_PEGAWAI_DIR di .env), hanya dibaca
 app.use('/foto', express.static(FOTO_PEGAWAI_DIR, { maxAge: '1h', index: false }))
+// MP3 kalimat panggilan buatan server (cache), dimainkan TV setelah bel
+app.use('/suara-nama', express.static(SUARA_CACHE_DIR, { maxAge: '1d', index: false }))
 
 export default app;

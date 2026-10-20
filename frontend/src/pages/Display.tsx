@@ -187,7 +187,7 @@ function TampilanPoli({ poli, pengaturan, demo, dev }: { poli: Poli; pengaturan:
     // Bunyikan nomor, lalu nama (tidak di poli yang namanya disamarkan). Mode panggil dipertahankan
     // sampai suaranya selesai kalau itu lebih lama dari durasi minimum.
     const mulai = Date.now();
-    bunyikanPanggilan({ nama: poli.samarkanNama ? undefined : p.nm_pasien, no_reg: p.no_reg, nm_poli: poli.nm_poli })
+    bunyikanPanggilan({ nama: poli.samarkanNama ? undefined : p.nm_pasien, no_reg: p.no_reg, nm_poli: poli.nm_poli, suaraUrl: p.suara_nama ? `${API_URL}${p.suara_nama}` : undefined })
       .catch((err) => console.warn('[suara]', err))
       .finally(() => {
         if (sekarangRef.current?.id !== p.id) return; // sudah ada panggilan lain
@@ -337,7 +337,7 @@ function TampilanMultiPoli({ daftar, judul, pengaturan, demo, dev }: {
     const poli = poliDari(p.kd_poli);
     const mulai = Date.now();
     let timerMinimal: number | null = window.setTimeout(() => { timerMinimal = null; }, DURASI_PANGGIL_MS);
-    bunyikanPanggilan({ nama: poli?.samarkanNama ? undefined : p.nm_pasien, no_reg: p.no_reg, nm_poli: poli?.nm_poli ?? p.nm_poli })
+    bunyikanPanggilan({ nama: poli?.samarkanNama ? undefined : p.nm_pasien, no_reg: p.no_reg, nm_poli: poli?.nm_poli ?? p.nm_poli, suaraUrl: p.suara_nama ? `${API_URL}${p.suara_nama}` : undefined })
       .catch((err) => console.warn('[suara]', err))
       .finally(() => {
         if (aktifRef.current?.id !== p.id) return;

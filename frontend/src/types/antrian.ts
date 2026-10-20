@@ -11,6 +11,7 @@ export type Panggilan = {
   no_reg: string;
   nm_pasien: string;
   tgl_registrasi: string | null;
+  suara_nama?: string; // path MP3 kalimat panggilan buatan server, relatif ke backend
 };
 
 export type DokterBertugas = {

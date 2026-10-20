@@ -1,7 +1,8 @@
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../../config/databases';
 import { antrianStore } from './store';
-import { formatNamaPasien } from './format';
+import { formatNamaPasien, kalimatPanggilan } from './format';
+import { buatSuara } from './suaraNama';
 import { Panggilan } from './types';
 
 /*
@@ -42,6 +43,8 @@ const POLL_MS = Number(process.env.ANTRIAN_POLL_MS ?? 1500);
 // Hanya umumkan pasien yang terdaftar hari ini. Baris lama (mis. backend sempat mati)
 // tetap ditandai selesai tapi tidak dibunyikan. Matikan di dev dengan ANTRIAN_HANYA_HARI_INI=false.
 const HANYA_HARI_INI = (process.env.ANTRIAN_HANYA_HARI_INI ?? 'true') !== 'false';
+// Poli yang nama pasiennya TIDAK boleh disebut/ditampilkan (SEMENTARA di .env; pindah ke tabel pengaturan di Langkah B).
+const POLI_SAMARKAN = new Set((process.env.POLI_SAMARKAN_NAMA ?? 'U0006,U0008,U0009,U0014').split(',').map((k) => k.trim()).filter(Boolean));
 
 let timer: NodeJS.Timeout | null = null;
 let sedangJalan = false;
@@ -83,9 +86,13 @@ export async function pollSekali(): Promise<number> {
       nm_pasien: formatNamaPasien(b.nm_pasien),
       tgl_registrasi: tgl,
     };
+    // Suara kalimat panggilan dibuat di server (cache; menunggu paling lama ~3 detik). Hanya untuk yang diumumkan.
+    if (umumkan) {
+      p.suara_nama = await buatSuara(kalimatPanggilan(p.nm_pasien, p.nm_poli, !POLI_SAMARKAN.has(p.kd_poli)));
+    }
     antrianStore.catat(p, umumkan);
     diproses++;
-    console.log(`[antrian] ${umumkan ? 'PANGGIL' : 'lewati (lama)'} ${p.nm_poli} no ${p.no_reg} ${p.nm_pasien} (${p.no_rawat})`);
+    console.log(`[antrian] ${umumkan ? 'PANGGIL' : 'lewati (lama)'} ${p.nm_poli} no ${p.no_reg} ${p.nm_pasien} (${p.no_rawat})${umumkan ? (p.suara_nama ? ' +mp3' : ' tanpa mp3') : ''}`);
   }
 
   sweepPertama = false;
