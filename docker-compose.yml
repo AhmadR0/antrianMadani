@@ -1,0 +1,57 @@
+# antrianMadani: layar antrian & informasi untuk TV, membaca SIMRS Khanza.
+#
+# Menjalankan:
+#   1. cp backend/.env.example backend/.env   lalu isi DB_* (akun MySQL Khanza dengan hak minimal)
+#   2. cp .env.docker.example .env            lalu isi FOTO_PEGAWAI_HOST (folder foto pegawai Khanza di host)
+#   3. docker compose up -d --build
+#   4. TV membuka http://IP-SERVER:8087/
+#
+# Backend HARUS satu instance (satu poller antripoli). Jangan di-scale.
+
+services:
+  antrian-backend:
+    build: ./backend
+    container_name: antrian-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+      TZ: ${TZ:-Asia/Makassar}
+      PORT: "8000"
+      # MySQL Khanza biasanya di host atau server lain; host.docker.internal = mesin host ini.
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      FOTO_PEGAWAI_DIR: /data/foto
+      SUARA_CACHE_DIR: /data/suara
+    volumes:
+      - ${FOTO_PEGAWAI_HOST:-./backend/foto-kosong}:/data/foto:ro
+      - antrian_suara:/data/suara
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Port backend TIDAK dipublikasikan; semua lewat nginx di frontend. Buka hanya untuk debug:
+    # ports:
+    #   - "127.0.0.1:8000:8000"
+    networks:
+      - antrian-net
+
+  antrian-frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: "/"
+    container_name: antrian-frontend
+    restart: unless-stopped
+    ports:
+      - "${PORT_APLIKASI:-8087}:80"
+    depends_on:
+      antrian-backend:
+        condition: service_healthy
+    networks:
+      - antrian-net
+
+networks:
+  antrian-net:
+    driver: bridge
+
+volumes:
+  antrian_suara:
