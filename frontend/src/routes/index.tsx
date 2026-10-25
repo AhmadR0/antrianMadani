@@ -4,6 +4,7 @@ import Display from '../pages/Display';
 import Cek from '../pages/Cek';
 import InfoBed from '../pages/InfoBed';
 import InfoJadwal from '../pages/InfoJadwal';
+import DisplayFarmasi from '../pages/DisplayFarmasi';
 
 export default function AppRoutes() {
   return (
@@ -13,6 +14,7 @@ export default function AppRoutes() {
         <Route path="/display/:kd_poli" element={<Display />} />
         <Route path="/info/bed" element={<InfoBed />} />
         <Route path="/info/jadwal" element={<InfoJadwal />} />
+        <Route path="/farmasi" element={<DisplayFarmasi />} />
         <Route path="/cek" element={<Cek />} />
       </Routes>
     </BrowserRouter>

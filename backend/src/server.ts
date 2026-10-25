@@ -1,6 +1,7 @@
 import app from './app';
 import { sequelize } from './config/databases';
 import { hentikanPoller, mulaiPoller } from './services/antrian/poller';
+import { hentikanPollerFarmasi, mulaiPollerFarmasi } from './services/farmasi/poller';
 import { mulaiPembersihCache } from './services/antrian/suaraNama';
 
 const PORT = Number(process.env.PORT || 8000);
@@ -21,6 +22,7 @@ async function startServer() {
   const server = app.listen(PORT, () => {
     console.log(`Server berjalan di port ${PORT}`);
     mulaiPoller();
+    mulaiPollerFarmasi();
     mulaiPembersihCache();
   });
 
@@ -40,6 +42,7 @@ async function startServer() {
     sedangBerhenti = true;
     console.log(`Menerima ${sinyal}, backend berhenti`);
     hentikanPoller();
+    hentikanPollerFarmasi();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 3000).unref(); // koneksi SSE yang masih terbuka jangan menahan
   };

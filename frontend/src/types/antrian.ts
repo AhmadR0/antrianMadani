@@ -32,3 +32,15 @@ export type KeadaanAntrian = { poli: KeadaanPoli[] };
 
 // GET /antrian/dokter?poli=a,b
 export type DokterPerPoli = { poli: { kd_poli: string; dokter: DokterBertugas[] }[] };
+
+// ---------- Farmasi ----------
+export type ResepTunggu = {
+  no_resep: string;
+  kode: string;           // 4 digit terakhir
+  nm_pasien: string;      // nama asli; disamarkan di layar
+  nm_poli: string;
+  jam_peresepan: string;
+  disiapkan: boolean;     // sudah divalidasi apoteker
+  menit_menunggu: number;
+};
+export type AntrianFarmasi = { tanggal: string; diperbarui: string; nonRacikan: ResepTunggu[]; racikan: ResepTunggu[] };

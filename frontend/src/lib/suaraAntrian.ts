@@ -251,7 +251,7 @@ const JEDA_ULANG_MS = 2500;     // jeda antara ulangan
 // dipakai kalau MP3 server tidak ada:  bel -> klip "nomor urut <angka>" -> TTS "Silakan menuju Poli <poli>".
 // Kalimatnya diutamakan dari MP3 buatan server (suaraUrl); kalau tidak ada / gagal, TTS browser; kalau itu pun tidak ada, diam.
 // Resolve setelah semuanya selesai, atau lebih awal kalau dibatalkan oleh panggilan berikutnya.
-export async function bunyikanPanggilan(opsi: { nama?: string; no_reg: string; nm_poli: string; suaraUrl?: string }): Promise<void> {
+export async function bunyikanPanggilan(opsi: { nama?: string; no_reg: string; nm_poli: string; suaraUrl?: string; kalimatCadangan?: string }): Promise<void> {
   const klipNomor = opsi.nama || opsi.suaraUrl ? [] : urutanKlipPanggilan(opsi.no_reg).filter((k) => k !== 'notif');
   const durasiAwal = await pemutarSuara.putar(['notif', ...klipNomor]);
   const gen = pemutarSuara.generasiSekarang;
@@ -270,6 +270,7 @@ export async function bunyikanPanggilan(opsi: { nama?: string; no_reg: string; n
         if (!masihAktif()) return;
       }
     }
+    if (opsi.kalimatCadangan) { await ucapkan(opsi.kalimatCadangan); return; }
     const tujuan = teksUcapPoli(opsi.nm_poli);
     if (opsi.nama) await ucapkan(`Atas nama ${teksUcapNama(opsi.nama)}, silakan menuju ${tujuan}.`);
     else await ucapkan(`Silakan menuju ${tujuan}.`);

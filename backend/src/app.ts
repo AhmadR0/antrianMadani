@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import antrianRoutes from './routes/antrianRoutes'
 import infoRoutes from './routes/infoRoutes'
+import farmasiRoutes from './routes/farmasiRoutes'
 import { FOTO_PEGAWAI_DIR } from './services/antrian/dokter'
 import { SUARA_CACHE_DIR } from './services/antrian/suaraNama'
 import { sequelize } from './config/databases'
@@ -16,6 +17,7 @@ app.use(express.urlencoded({extended:true}))
 
 app.use('/antrian', antrianRoutes)
 app.use('/info', infoRoutes)
+app.use('/farmasi', farmasiRoutes)
 // Untuk healthcheck Docker / pemantauan: 200 kalau proses hidup dan database bisa dijawab.
 app.get('/health', async (_req, res) => {
   try {

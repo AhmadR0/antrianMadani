@@ -34,3 +34,7 @@ export const kalimatPanggilan = (nm_pasien: string, nm_poli: string, sebutNama: 
   const n = angkaUrut(no_reg);
   return n > 0 ? `Nomor urut ${n}, silakan menuju ${tujuan}.` : `Silakan menuju ${tujuan}.`;
 };
+
+// Kalimat panggilan farmasi: satu loket penyerahan obat, pasien dipanggil dengan nama.
+export const kalimatPanggilanFarmasi = (nm_pasien: string): string =>
+  `Atas nama ${teksUcapNama(nm_pasien)}, silakan ke loket penyerahan obat.`;

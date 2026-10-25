@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, BedDouble, CalendarDays, Info, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BedDouble, CalendarDays, Info, Pill, type LucideIcon } from 'lucide-react';
 import { DAFTAR_POLI } from '../config/poli';
 import { bacaPilihanLayar, simpanPilihanLayar } from '../lib/pilihanLayar';
 import HeaderRS from '../components/ui/HeaderRS';
@@ -52,6 +52,15 @@ const LAYAR_INFO: Layar[] = [
     warnaLembut: 'bg-sky-100',
     warnaKuat: 'text-sky-700',
     keterangan: 'Jadwal praktik dokter hari ini untuk semua poli',
+  },
+  {
+    path: 'farmasi',
+    kode: 'FARMASI',
+    nama: 'Antrian Farmasi',
+    ikon: Pill,
+    warnaLembut: 'bg-emerald-100',
+    warnaKuat: 'text-emerald-700',
+    keterangan: 'Panggilan penyerahan obat dan daftar tunggu resep',
   },
 ];
 
@@ -253,7 +262,7 @@ export default function Dashboard() {
         </div>
 
         <h2 className="mt-6 mb-3 text-lg font-semibold uppercase tracking-widest text-rs-tinta-lembut">Layar informasi</h2>
-        <div className="grid grid-cols-5 gap-5">
+        <div className="grid grid-cols-3 gap-5">
           {LAYAR_INFO.map((layar, j) => {
             const Ikon = layar.ikon;
             const i = LAYAR_POLI.length + j;
@@ -263,7 +272,7 @@ export default function Dashboard() {
                 ref={(el) => { tombolRef.current[i] = el; }}
                 type="button"
                 onClick={() => bukaLayar(layar)}
-                className={`${KELAS_TOMBOL} col-span-2 flex h-28 items-center gap-5 px-6`}
+                className={`${KELAS_TOMBOL} flex h-28 items-center gap-5 px-6`}
               >
                 <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${layar.warnaLembut}`}>
                   <Ikon className={`h-7 w-7 ${layar.warnaKuat}`} strokeWidth={2.2} />

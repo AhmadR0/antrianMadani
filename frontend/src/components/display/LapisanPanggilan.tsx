@@ -8,11 +8,14 @@ type Props = {
   pakaiNomor?: boolean; // poli yang namanya disamarkan: nomor urut jadi elemen utama
   // Layar multi-poli (koridor): nama poli harus dominan, latar memakai warna poli.
   multiPoli?: { Ikon: LucideIcon; warnaLatar: string };
+  labelAtas?: string;   // ganti teks kecil di atas (default: nm_poli)
+  teksBawah?: React.ReactNode; // ganti kalimat bawah (default: "Silakan menuju <nm_poli>")
+  keterangan?: string;  // ganti baris di bawah nama (default: nm_dokter)
 };
 
 // Lapisan ambil alih seluruh layar saat ada panggilan. Kebijakan RS: pasien dipanggil dengan NAMA,
 // jadi nama pasien yang paling besar. Video di belakangnya tetap berjalan (dibisukan) dan hanya tertutup.
-export default function LapisanPanggilan({ panggilan, nm_poli, namaTampil, pakaiNomor = false, multiPoli }: Props) {
+export default function LapisanPanggilan({ panggilan, nm_poli, namaTampil, pakaiNomor = false, multiPoli, labelAtas, teksBawah, keterangan }: Props) {
   const latar = multiPoli ? multiPoli.warnaLatar : 'bg-gradient-to-br from-teal-600 via-rs-primer to-teal-800';
   const Ikon = multiPoli?.Ikon;
   // Nama panjang diperkecil otomatis supaya tetap muat dua baris.
@@ -27,7 +30,7 @@ export default function LapisanPanggilan({ panggilan, nm_poli, namaTampil, pakai
           <p className="text-6xl font-bold tracking-tight">{nm_poli}</p>
         </div>
       ) : (
-        <p className="text-3xl font-semibold uppercase tracking-[0.3em] text-white/80">{nm_poli}</p>
+        <p className="text-3xl font-semibold uppercase tracking-[0.3em] text-white/80">{labelAtas ?? nm_poli}</p>
       )}
 
       <div className="flex w-full flex-col items-center">
@@ -43,10 +46,10 @@ export default function LapisanPanggilan({ panggilan, nm_poli, namaTampil, pakai
         >
           {namaTampil || '-'}
         </p>
-        <p className="mt-6 text-4xl text-white/80">{panggilan.nm_dokter}</p>
+        <p className="mt-6 text-4xl text-white/80">{keterangan ?? panggilan.nm_dokter}</p>
       </div>
 
-      <p className="text-4xl text-white">Silakan menuju <span className="font-bold">{nm_poli}</span></p>
+      <p className="text-4xl text-white">{teksBawah ?? <>Silakan menuju <span className="font-bold">{nm_poli}</span></>}</p>
     </div>
   );
 }

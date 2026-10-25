@@ -9,7 +9,7 @@ import { Panggilan } from '../services/antrian/types';
 // Semua endpoint di sini menerima ?poli=U0003 atau ?poli=U0004,U0005,U0011.
 
 const route = express.Router();
-const POLA_KD_POLI = /^[A-Za-z0-9]{1,5}$/;
+const POLA_KD_POLI = /^[A-Za-z0-9]{1,10}$/; // kd_poli Khanza (5) atau kanal khusus seperti FARMASI
 const MAKS_POLI = 3;
 
 const ambilDaftarPoli = (req: Request, res: Response): string[] | null => {
