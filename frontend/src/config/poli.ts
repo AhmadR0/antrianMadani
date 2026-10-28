@@ -26,7 +26,7 @@ export const DAFTAR_POLI: Poli[] = [
   { kd_poli: 'U0003', nm_poli: 'KLINIK PENYAKIT DALAM', ikon: Stethoscope,        warnaLembut: 'bg-teal-100',    warnaKuat: 'text-teal-700', warnaLatar: 'bg-teal-700' },
   { kd_poli: 'U0004', nm_poli: 'KLINIK BEDAH',          ikon: Scissors,           warnaLembut: 'bg-blue-100',    warnaKuat: 'text-blue-600', warnaLatar: 'bg-blue-700' },
   { kd_poli: 'U0005', nm_poli: 'KLINIK MATA',           ikon: Eye,                warnaLembut: 'bg-sky-100',     warnaKuat: 'text-sky-600', warnaLatar: 'bg-sky-600' },
-  { kd_poli: 'U0006', nm_poli: 'KLINIK KULIT & KELAMIN',ikon: Hand,               warnaLembut: 'bg-orange-100',  warnaKuat: 'text-orange-600', warnaLatar: 'bg-orange-600', samarkanNama: true },
+  { kd_poli: 'U0006', nm_poli: 'KLINIK KULIT & KELAMIN',ikon: Hand,               warnaLembut: 'bg-orange-100',  warnaKuat: 'text-orange-600', warnaLatar: 'bg-orange-600' },
   { kd_poli: 'U0007', nm_poli: 'KLINIK SYARAF',         ikon: Brain,              warnaLembut: 'bg-violet-100',  warnaKuat: 'text-violet-600', warnaLatar: 'bg-violet-700' },
   { kd_poli: 'U0008', nm_poli: 'KLINIK TB',             ikon: Wind,               warnaLembut: 'bg-cyan-100',    warnaKuat: 'text-cyan-600', warnaLatar: 'bg-cyan-700', samarkanNama: true },
   { kd_poli: 'U0009', nm_poli: 'KLINIK JIWA',           ikon: MessageCircleHeart, warnaLembut: 'bg-fuchsia-100', warnaKuat: 'text-fuchsia-600', warnaLatar: 'bg-fuchsia-700', samarkanNama: true },
