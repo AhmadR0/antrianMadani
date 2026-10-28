@@ -11,6 +11,8 @@ type Props = {
   onUbahPengaturan: (p: PengaturanTv) => void;
   onMulai: () => void;
   onGanti: () => void;
+  opsiNomorAntrian?: boolean; // layar farmasi: tampilkan centang "nomor antrian"
+  teksGanti?: string;         // teks tautan ganti layar (default untuk poli)
 };
 
 // Layar pertama sebelum tampilan antrian. Satu klik/OK di sini:
@@ -18,7 +20,7 @@ type Props = {
 // 2. mencoba masuk fullscreen,
 // 3. menegaskan ke operator layar poli mana yang akan dibuka.
 // Juga tempat pengaturan per TV (video & suaranya), diingat di TV ini.
-export default function GerbangMulai({ nm_poli, Ikon, warnaLembut, warnaKuat, pengaturan, onUbahPengaturan, onMulai, onGanti }: Props) {
+export default function GerbangMulai({ nm_poli, Ikon, warnaLembut, warnaKuat, pengaturan, onUbahPengaturan, onMulai, onGanti, opsiNomorAntrian = false, teksGanti = 'Bukan poli ini? Ganti poli' }: Props) {
   const mulai = () => {
     try {
       const p = document.documentElement.requestFullscreen?.();
@@ -63,6 +65,13 @@ export default function GerbangMulai({ nm_poli, Ikon, warnaLembut, warnaKuat, pe
           nonaktif={!pengaturan.video}
           onUbah={(v) => onUbahPengaturan({ ...pengaturan, suaraVideo: v })}
         />
+        {opsiNomorAntrian && (
+          <Centang
+            label="Tampilkan nomor antrian"
+            aktif={pengaturan.nomorAntrian}
+            onUbah={(v) => onUbahPengaturan({ ...pengaturan, nomorAntrian: v })}
+          />
+        )}
       </div>
 
       <button
@@ -70,7 +79,7 @@ export default function GerbangMulai({ nm_poli, Ikon, warnaLembut, warnaKuat, pe
         onClick={onGanti}
         className="text-xl text-rs-tinta-lembut underline-offset-4 hover:underline focus:outline-none focus:underline"
       >
-        Bukan poli ini? Ganti poli
+        {teksGanti}
       </button>
     </div>
   );

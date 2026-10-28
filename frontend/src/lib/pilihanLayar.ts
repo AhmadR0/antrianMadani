@@ -35,18 +35,19 @@ export function hapusPilihanLayar(): void {
 
 // ---------- Pengaturan per TV (sementara di localStorage; nanti pindah ke halaman admin) ----------
 // video: tampilkan kolom video & iklan. suaraVideo: video bersuara (false = bisu, mis. dua TV berhadapan).
+// nomorAntrian: layar farmasi menampilkan nomor resep di samping nama (mati = hanya nama).
 
-export type PengaturanTv = { video: boolean; suaraVideo: boolean };
+export type PengaturanTv = { video: boolean; suaraVideo: boolean; nomorAntrian: boolean };
 
 const KUNCI_TV = 'antrian.layar.tv';
-const BAWAAN_TV: PengaturanTv = { video: true, suaraVideo: true };
+const BAWAAN_TV: PengaturanTv = { video: true, suaraVideo: true, nomorAntrian: false };
 
 export function bacaPengaturanTv(): PengaturanTv {
   try {
     const mentah = window.localStorage.getItem(KUNCI_TV);
     if (!mentah) return { ...BAWAAN_TV };
     const obj = JSON.parse(mentah) as Partial<PengaturanTv>;
-    return { video: obj.video ?? true, suaraVideo: obj.suaraVideo ?? true };
+    return { video: obj.video ?? true, suaraVideo: obj.suaraVideo ?? true, nomorAntrian: obj.nomorAntrian ?? false };
   } catch {
     return { ...BAWAAN_TV };
   }

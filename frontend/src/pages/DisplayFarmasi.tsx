@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Pill, WifiOff } from 'lucide-react';
+import { FlaskConical, Info, Pill, WifiOff } from 'lucide-react';
 import { bacaPengaturanTv, hapusPilihanLayar, simpanPengaturanTv, type PengaturanTv } from '../lib/pilihanLayar';
 import { samarkanNama } from '../lib/samarkanNama';
 import { bunyikanPanggilan, pemutarSuara, siapkanSuara } from '../lib/suaraAntrian';
@@ -21,15 +21,17 @@ import PapanFarmasi from '../components/display/PapanFarmasi';
 // - Panggilan: Khanza tombol "Penyerahan" -> antriapotek3 -> poller backend -> SSE kanal "FARMASI".
 //   Pasien dipanggil dengan NAMA LENGKAP, suara MP3 server: "Atas nama X, silakan ke loket penyerahan obat".
 // - Daftar tunggu: resep hari ini yang belum diserahkan, non racikan & racikan, nama disamarkan,
-//   status "Menunggu" / "Sedang disiapkan", lama menunggu.
+//   dikelompokkan "Sedang disiapkan" / "Menunggu". Panggilan TIDAK mengikuti urutan nomor (obat yang
+//   selesai duluan dipanggil duluan), jadi tidak ada posisi antrian; nomor resep opsional per TV.
 
 const KD_FARMASI = 'FARMASI';
 const DURASI_PANGGIL_MS = 8000;
 const JEDA_SETELAH_SUARA_MS = 1500;
-const JUMLAH_SEBELUMNYA = 3;
+const JUMLAH_SEBELUMNYA = 6;          // disimpan 6, tampil 3 saat video menyala
+const KAPASITAS_PAPAN = 10;           // kartu per papan per halaman (2 kolom x 5 baris)
 const RUNNING_TEXT =
-  'Mohon menunggu, obat Anda sedang disiapkan. Pasien akan dipanggil dengan nama saat obat siap diserahkan. ' +
-  'Pastikan nama dan jumlah obat sesuai sebelum meninggalkan loket.';
+  'Pasien dipanggil dengan nama begitu obat selesai disiapkan, sehingga panggilan tidak selalu sesuai urutan nomor. ' +
+  'Resep racikan memerlukan waktu lebih lama. Pastikan nama dan jumlah obat sesuai sebelum meninggalkan loket.';
 const PLAYLIST: string[] = [];
 
 const tombolKembali = (e: KeyboardEvent) =>
@@ -52,7 +54,12 @@ export default function DisplayFarmasi() {
   const [mulai, setMulai] = useState(dev && params.get('mulai') === '1');
   const [pengaturan, setPengaturan] = useState<PengaturanTv>(() => {
     const p = bacaPengaturanTv();
-    return dev && params.get('video') === '0' ? { ...p, video: false } : p;
+    if (!dev) return p;
+    return {
+      ...p,
+      video: params.get('video') === '0' ? false : p.video,
+      nomorAntrian: params.get('nomor') === '1' ? true : p.nomorAntrian,
+    };
   });
   const ubahPengaturan = (p: PengaturanTv) => { setPengaturan(p); simpanPengaturanTv(p); };
 
@@ -80,6 +87,8 @@ export default function DisplayFarmasi() {
           onUbahPengaturan={ubahPengaturan}
           onMulai={() => { void siapkanSuara(); setMulai(true); }}
           onGanti={() => { hapusPilihanLayar(); navigate('/'); }}
+          opsiNomorAntrian
+          teksGanti="Bukan layar ini? Ganti layar"
         />
       </KanvasTV>
     );
@@ -135,8 +144,8 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
   }, [keadaanFarmasi]);
 
   const { data, status: statusDaftar } = useAntrianFarmasi(tanggalDev);
-  // Baris per papan: tanpa video kolom kanan lebih tinggi? Tidak, papan selalu di kanan; 7 baris cukup di 1080p.
-  const perHalaman = 7;
+  const tampilNomor = pengaturan.nomorAntrian;
+  const daftarSebelumnya = sebelumnya.slice(0, pengaturan.video ? 3 : JUMLAH_SEBELUMNYA);
 
   return (
     <KanvasTV>
@@ -154,24 +163,32 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
                 <>
                   <p className={`line-clamp-3 font-bold leading-tight ${pengaturan.video ? 'text-5xl' : 'text-7xl'}`}>{sekarang.nm_pasien}</p>
                   <p className="mt-3 text-2xl text-rs-tinta-lembut">
-                    Resep <span className="font-bold tabular-nums text-rs-tinta">{sekarang.no_reg}</span>
-                    {sekarang.nm_poli && <> · dari {sekarang.nm_poli}</>}
+                    {tampilNomor && <>Resep <span className="font-bold tabular-nums text-rs-tinta">{sekarang.no_reg}</span>{sekarang.nm_poli && ' · '}</>}
+                    {sekarang.nm_poli && <>dari {sekarang.nm_poli}</>}
                   </p>
                 </>
               ) : (
                 <p className="text-4xl text-rs-tinta-lembut">Menunggu panggilan</p>
               )}
             </div>
-            {sebelumnya.length > 0 && (
+            {daftarSebelumnya.length > 0 && (
               <div className="border-t border-rs-garis pt-4">
-                <p className="mb-1 text-base text-rs-tinta-lembut">Sebelumnya</p>
-                <ul className="flex flex-col gap-0.5">
-                  {sebelumnya.map((p) => (
-                    <li key={p.id} className="truncate text-xl font-semibold text-rs-tinta">
-                      <span className="mr-3 tabular-nums text-rs-tinta-lembut">{p.no_reg}</span>{samarkanNama(p.nm_pasien)}
+                <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-rs-tinta-lembut">Sudah dipanggil</p>
+                <ul className={`flex flex-col ${pengaturan.video ? 'gap-0.5' : 'gap-1.5'}`}>
+                  {daftarSebelumnya.map((p) => (
+                    <li key={p.id} className={`flex items-baseline gap-3 truncate font-semibold text-rs-tinta ${pengaturan.video ? 'text-xl' : 'text-2xl'}`}>
+                      {tampilNomor && <span className="shrink-0 tabular-nums text-rs-tinta-lembut">{p.no_reg}</span>}
+                      <span className="truncate">{samarkanNama(p.nm_pasien)}</span>
+                      {p.nm_poli && <span className="shrink-0 text-base font-normal text-rs-tinta-lembut">{p.nm_poli}</span>}
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+            {!pengaturan.video && (
+              <div className="mt-5 flex items-start gap-3 rounded-2xl bg-rs-latar px-5 py-4 text-lg leading-snug text-rs-tinta-lembut">
+                <Info className="mt-0.5 h-6 w-6 shrink-0 text-rs-primer" strokeWidth={2.2} />
+                <p>Panggilan tidak selalu sesuai urutan nomor. Obat dipanggil begitu selesai disiapkan, resep racikan memerlukan waktu lebih lama.</p>
               </div>
             )}
           </section>
@@ -184,8 +201,8 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
 
         {/* Kolom kanan: dua papan */}
         <div className="flex min-h-0 flex-col gap-5">
-          <PapanFarmasi judul="Non Racikan" Ikon={Pill} warna="teal" daftar={data?.nonRacikan ?? []} perHalaman={perHalaman} />
-          <PapanFarmasi judul="Racikan" Ikon={FlaskConical} warna="sky" daftar={data?.racikan ?? []} perHalaman={perHalaman} />
+          <PapanFarmasi judul="Non Racikan" Ikon={Pill} warna="teal" daftar={data?.nonRacikan ?? []} kapasitas={KAPASITAS_PAPAN} tampilNomor={tampilNomor} />
+          <PapanFarmasi judul="Racikan" Ikon={FlaskConical} warna="sky" daftar={data?.racikan ?? []} kapasitas={KAPASITAS_PAPAN} tampilNomor={tampilNomor} />
         </div>
       </div>
 
@@ -197,7 +214,7 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
           nm_poli="FARMASI"
           labelAtas="FARMASI · PENYERAHAN OBAT"
           namaTampil={sekarang.nm_pasien}
-          keterangan={`Resep ${sekarang.no_reg}${sekarang.nm_poli ? ` · ${sekarang.nm_poli}` : ''}`}
+          keterangan={[tampilNomor ? `Resep ${sekarang.no_reg}` : '', sekarang.nm_poli ?? ''].filter(Boolean).join(' · ')}
           teksBawah={<>Silakan ke <span className="font-bold">loket penyerahan obat</span></>}
         />
       )}
