@@ -65,7 +65,7 @@ const LAYAR_INFO: Layar[] = [
 ];
 
 const SEMUA_LAYAR = [...LAYAR_POLI, ...LAYAR_INFO];
-const MAKS_POLI = 3;
+const MAKS_POLI = 4;
 
 // Path tersimpan -> Layar. Path gabungan "display/U0004,U0005,U0011" (layar koridor) dirakit dari poli-polinya.
 function cariLayar(path: string | null): Layar | null {
@@ -212,7 +212,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-rs-tinta">Pilih layar untuk TV ini</h1>
             <p className="mt-2 text-xl text-rs-tinta-lembut">
-              Pilih poli sesuai ruangan tempat TV ini dipasang. Untuk layar koridor, centang sampai 3 poli lalu tekan "Buka layar".
+              Pilih poli sesuai ruangan tempat TV ini dipasang. Untuk layar koridor, centang sampai 4 poli lalu tekan "Buka layar".
             </p>
           </div>
           <div className="flex items-center gap-3 text-base text-rs-tinta-lembut">

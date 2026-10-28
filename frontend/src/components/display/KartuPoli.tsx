@@ -18,11 +18,15 @@ type Props = {
 export default function KartuPoli({ poli, sekarang, namaTampil, pakaiNomor = false, dokter, now, mode, jumlahPoli }: Props) {
   const Ikon = poli.ikon;
   const kolom = mode === 'kolom';
-  // Tiga tingkat ukuran: kolom penuh (tanpa video), tumpuk 2 poli (lega), tumpuk 3 poli (padat, ~260 px per kartu).
+  // Tingkat ukuran: kolom penuh (tanpa video; 4 poli = kotak 2x2 ~900x400 px), tumpuk 2 poli (lega),
+  // tumpuk 3 poli (padat, ~260 px per kartu), tumpuk 4 poli (kotak 2x2 ~440x400 px di kolom kiri).
+  const kotak4 = jumlahPoli >= 4;
   const padat = !kolom && jumlahPoli >= 3;
-  const maksDokter = kolom ? 3 : padat ? 1 : 2;
+  const maksDokter = kolom ? (kotak4 ? 1 : 3) : padat ? 1 : 2;
   const u = kolom
-    ? { nomor: 'text-[9rem]',  nama: 'text-4xl', namaBesar: 'text-6xl', pemanggil: 'mt-1 text-2xl', foto: 'h-16 w-16 text-xl', dnama: 'text-2xl', djam: 'text-lg',  baris: 'px-3 py-2' }
+    ? kotak4
+      ? { nomor: 'text-[6rem]',  nama: 'text-3xl', namaBesar: 'text-5xl', pemanggil: 'mt-1 text-xl',  foto: 'h-14 w-14 text-lg', dnama: 'text-xl',  djam: 'text-base', baris: 'px-3 py-1.5' }
+      : { nomor: 'text-[9rem]',  nama: 'text-4xl', namaBesar: 'text-6xl', pemanggil: 'mt-1 text-2xl', foto: 'h-16 w-16 text-xl', dnama: 'text-2xl', djam: 'text-lg',  baris: 'px-3 py-2' }
     : padat
       ? { nomor: 'text-[4.5rem]', nama: 'text-3xl', namaBesar: 'text-4xl', pemanggil: 'text-base',    foto: 'h-[52px] w-[52px] text-lg', dnama: 'text-xl', djam: 'text-sm', baris: 'px-3 py-1.5' }
       : { nomor: 'text-[5.5rem]', nama: 'text-3xl', namaBesar: 'text-5xl', pemanggil: 'text-xl',      foto: 'h-14 w-14 text-lg', dnama: 'text-xl', djam: 'text-base', baris: 'px-3 py-2' };
@@ -36,7 +40,7 @@ export default function KartuPoli({ poli, sekarang, namaTampil, pakaiNomor = fal
         <div className={`flex shrink-0 items-center justify-center rounded-2xl ${poli.warnaLembut} ${kolom ? 'h-16 w-16' : 'h-12 w-12'}`}>
           <Ikon className={`${poli.warnaKuat} ${kolom ? 'h-8 w-8' : 'h-6 w-6'}`} strokeWidth={2.2} />
         </div>
-        <p className={`line-clamp-2 font-bold leading-tight text-rs-tinta ${kolom ? 'text-4xl' : 'text-[2rem]'}`}>{poli.nm_poli}</p>
+        <p className={`line-clamp-2 font-bold leading-tight text-rs-tinta ${kolom ? (kotak4 ? 'text-3xl' : 'text-4xl') : kotak4 ? 'text-2xl' : 'text-[2rem]'}`}>{poli.nm_poli}</p>
       </div>
 
       {/* Terakhir dipanggil: NAMA pasien besar (nomor hanya di poli yang namanya disamarkan) */}
@@ -48,7 +52,7 @@ export default function KartuPoli({ poli, sekarang, namaTampil, pakaiNomor = fal
                 {sekarang.no_reg}
               </div>
             )}
-            <p className={`font-bold leading-tight text-rs-tinta ${pakaiNomor ? `${u.nama} line-clamp-1` : `${u.namaBesar} line-clamp-2`}`}>
+            <p className={`font-bold leading-tight text-rs-tinta ${pakaiNomor ? `${u.nama} line-clamp-1` : `${u.namaBesar} ${padat && !kotak4 ? 'line-clamp-1' : 'line-clamp-2'}`}`}>
               {namaTampil || '-'}
             </p>
             <p className={`truncate text-rs-tinta-lembut ${u.pemanggil}`}>{sekarang.nm_dokter}</p>

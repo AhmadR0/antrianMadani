@@ -31,7 +31,7 @@ const DURASI_PANGGIL_MS = 8000;      // minimal; diperpanjang kalau suaranya leb
 const JEDA_SETELAH_SUARA_MS = 1500;
 const JEDA_ANTAR_PANGGILAN_MS = 600; // layar multi-poli: jeda antara dua panggilan yang bergiliran
 const JUMLAH_SEBELUMNYA = 3;
-const MAKS_POLI = 3;
+const MAKS_POLI = 4;
 const RUNNING_TEXT =
   'Selamat datang di RSUD Madani. Mohon menunggu dengan tenang, pasien akan dipanggil dengan nama sesuai urutan. ' +
   'Informasi dan pengaduan: (0451) 491605.';
@@ -40,7 +40,7 @@ const PLAYLIST: string[] = [];
 
 // Kelas kolom ditulis lengkap supaya terdeteksi Tailwind.
 const KOLOM_DOKTER: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
-const KOLOM_POLI: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
+const KOLOM_POLI: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-2 grid-rows-2' };
 
 // Tombol "kembali" di berbagai remote/browser TV: Escape, Backspace, Android TV (461), Tizen (10009), webOS (461).
 function tombolKembali(e: KeyboardEvent): boolean {
@@ -407,15 +407,16 @@ function TampilanMultiPoli({ daftar, judul, pengaturan, demo, dev }: {
     <KanvasTV>
     <div className="relative grid h-full w-full grid-rows-[auto_1fr_auto] gap-6 overflow-hidden px-12 pb-6">
       <LatarMedis />
-      <HeaderRS judul={judul} subjudul="RSUD Madani · Layar koridor" />
+      <HeaderRS judul={judul} subjudul="RSUD Madani · Layar koridor" judulKecil={daftar.length >= 4} />
 
       {pengaturan.video ? (
         <div className="grid min-h-0 grid-cols-[1fr_1fr] gap-6">
-          <div className="flex min-h-0 flex-col gap-4">{kartu('tumpuk')}</div>
+          {/* 4 poli: kotak 2x2 supaya tiap kartu tidak terlalu pipih */}
+          <div className={daftar.length >= 4 ? 'grid min-h-0 grid-cols-2 grid-rows-2 gap-4' : 'flex min-h-0 flex-col gap-4'}>{kartu('tumpuk')}</div>
           <AreaVideo playlist={PLAYLIST} senyap={modePanggil} bisu={!pengaturan.suaraVideo} />
         </div>
       ) : (
-        <div className={`grid min-h-0 gap-6 ${KOLOM_POLI[daftar.length] ?? 'grid-cols-3'}`}>{kartu('kolom')}</div>
+        <div className={`grid min-h-0 gap-6 ${KOLOM_POLI[daftar.length] ?? 'grid-cols-2 grid-rows-2'}`}>{kartu('kolom')}</div>
       )}
 
       <RunningText teks={RUNNING_TEXT} />

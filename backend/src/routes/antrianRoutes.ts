@@ -10,7 +10,7 @@ import { Panggilan } from '../services/antrian/types';
 
 const route = express.Router();
 const POLA_KD_POLI = /^[A-Za-z0-9]{1,10}$/; // kd_poli Khanza (5) atau kanal khusus seperti FARMASI
-const MAKS_POLI = 3;
+const MAKS_POLI = 4;
 
 const ambilDaftarPoli = (req: Request, res: Response): string[] | null => {
   const daftar = [...new Set(String(req.query.poli ?? '').split(',').map((k) => k.trim()).filter(Boolean))];
