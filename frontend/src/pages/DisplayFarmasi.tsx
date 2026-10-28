@@ -28,7 +28,7 @@ const KD_FARMASI = 'FARMASI';
 const DURASI_PANGGIL_MS = 8000;
 const JEDA_SETELAH_SUARA_MS = 1500;
 const JUMLAH_SEBELUMNYA = 6;          // disimpan 6, tampil 3 saat video menyala
-const KAPASITAS_PAPAN = 10;           // kartu per papan per halaman (2 kolom x 5 baris)
+const KAPASITAS_PAPAN = 8;            // kartu per papan per halaman (2 kolom x 4 baris)
 const RUNNING_TEXT =
   'Pasien dipanggil dengan nama begitu obat selesai disiapkan, sehingga panggilan tidak selalu sesuai urutan nomor. ' +
   'Resep racikan memerlukan waktu lebih lama. Pastikan nama dan jumlah obat sesuai sebelum meninggalkan loket.';

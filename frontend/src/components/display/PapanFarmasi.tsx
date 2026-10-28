@@ -14,6 +14,7 @@ type Props = {
 
 const DURASI_HALAMAN_MS = 10_000;
 const MAKS_TERTEMPEL_SISA = 4; // minimal 4 slot disisakan untuk kelompok "menunggu"
+const MAKS_TITIK_HALAMAN = 10;  // lebih dari ini tampil angka, bukan titik
 
 const WARNA = {
   teal: { ikon: 'bg-rs-primer-lembut text-rs-primer-gelap', siap: 'border-rs-primer/40 bg-rs-primer-lembut/70', titik: 'bg-rs-primer', label: 'text-rs-primer-gelap' },
@@ -29,8 +30,12 @@ export default function PapanFarmasi({ judul, Ikon, warna, daftar, kapasitas, ta
   const disiapkan = daftar.filter((r) => r.disiapkan);
   const menunggu = daftar.filter((r) => !r.disiapkan);
 
-  const tertempel = disiapkan.slice(0, Math.max(0, kapasitas - MAKS_TERTEMPEL_SISA));
+  // Kelompok "disiapkan" hanya ditempel kalau memang ada yang menunggu; kalau semua sudah disiapkan
+  // (mis. akhir hari), seluruh daftar berganti halaman di bawah satu label.
+  const tertempel = menunggu.length > 0 ? disiapkan.slice(0, Math.max(0, kapasitas - MAKS_TERTEMPEL_SISA)) : [];
   const bergilir = [...disiapkan.slice(tertempel.length), ...menunggu];
+  const adaSiapDiBergilir = bergilir.some((r) => r.disiapkan);
+  const labelBergilir = menunggu.length === 0 ? 'Sedang disiapkan' : adaSiapDiBergilir ? 'Antrian' : 'Menunggu';
   const perHalaman = Math.max(1, kapasitas - tertempel.length);
   const jumlahHalaman = Math.max(1, Math.ceil(bergilir.length / perHalaman));
 
@@ -56,12 +61,15 @@ export default function PapanFarmasi({ judul, Ikon, warna, daftar, kapasitas, ta
             {daftar.length === 0 ? 'Tidak ada antrian' : <>{menunggu.length} menunggu · {disiapkan.length} sedang disiapkan</>}
           </p>
         </div>
-        {jumlahHalaman > 1 && (
+        {jumlahHalaman > 1 && jumlahHalaman <= MAKS_TITIK_HALAMAN && (
           <div className="ml-auto flex items-center gap-1.5" aria-label={`halaman ${hal + 1} dari ${jumlahHalaman}`}>
             {Array.from({ length: jumlahHalaman }, (_, i) => (
               <span key={i} className={`h-2.5 rounded-full transition-all ${i === hal ? `w-7 ${w.titik}` : 'w-2.5 bg-rs-garis'}`} />
             ))}
           </div>
+        )}
+        {jumlahHalaman > MAKS_TITIK_HALAMAN && (
+          <p className="ml-auto text-lg tabular-nums text-rs-tinta-lembut">{hal + 1} / {jumlahHalaman}</p>
         )}
       </div>
 
@@ -72,14 +80,14 @@ export default function PapanFarmasi({ judul, Ikon, warna, daftar, kapasitas, ta
           {tertempel.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <LabelKelompok teks="Sedang disiapkan" warna={w.label} titik={w.titik} />
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 {tertempel.map((r) => <KartuResep key={r.no_resep} r={r} siap={w.siap} titik={w.titik} tampilNomor={tampilNomor} />)}
               </div>
             </div>
           )}
           <div className="flex min-h-0 flex-1 flex-col gap-1.5">
-            <LabelKelompok teks="Menunggu" warna="text-rs-tinta-lembut" />
-            <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2.5">
+            <LabelKelompok teks={labelBergilir} warna={menunggu.length === 0 ? w.label : 'text-rs-tinta-lembut'} titik={menunggu.length === 0 ? w.titik : undefined} />
+            <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-hidden">
               {tampil.map((r) => <KartuResep key={r.no_resep} r={r} siap={w.siap} titik={w.titik} tampilNomor={tampilNomor} />)}
             </div>
           </div>
@@ -100,12 +108,12 @@ function LabelKelompok({ teks, warna, titik }: { teks: string; warna: string; ti
 
 function KartuResep({ r, siap, titik, tampilNomor }: { r: ResepTunggu; siap: string; titik: string; tampilNomor: boolean }) {
   return (
-    <div className={`flex h-[62px] items-center gap-3 rounded-2xl border-2 px-4 ${r.disiapkan ? siap : 'border-rs-garis/70 bg-rs-latar/70'}`}>
+    <div className={`flex h-13 items-center gap-3 rounded-2xl border-2 px-4 ${r.disiapkan ? siap : 'border-rs-garis/70 bg-rs-latar/70'}`}>
       {tampilNomor && (
         <span className="shrink-0 rounded-xl bg-rs-kartu px-2.5 py-1 text-2xl font-bold tabular-nums leading-none text-rs-tinta shadow-sm">{r.kode}</span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-2xl font-bold leading-tight text-rs-tinta">{samarkanNama(r.nm_pasien)}</p>
+        <p className="truncate text-2xl font-bold leading-tight text-rs-tinta">{r.nm_pasien && r.nm_pasien !== '-' ? samarkanNama(r.nm_pasien) : <span className="font-normal text-rs-tinta-lembut">Nama tidak tersedia</span>}</p>
         <p className="truncate text-sm leading-tight text-rs-tinta-lembut">{r.nm_poli}</p>
       </div>
       {r.disiapkan && <span className={`h-3 w-3 shrink-0 rounded-full ${titik} rs-denyut`} />}
