@@ -19,9 +19,10 @@ export const formatNamaPasien = (nama: string | null | undefined): string => {
 export const teksUcapNama = (nama: string): string =>
   nama.toLowerCase().replace(/(^|\s)(\S)/g, (_m, spasi: string, h: string) => spasi + h.toUpperCase());
 
-// "KLINIK BEDAH" -> "Poli Bedah"
+// "KLINIK BEDAH" -> "Poli Bedah"; "KLINIK KULIT & KELAMIN" -> "Poli Kulit dan Kelamin"
+// (tanda & tidak terbaca rapi oleh mesin TTS; hanya untuk diucapkan, teks layar tetap pakai &).
 export const teksUcapPoli = (nm_poli: string): string =>
-  'Poli ' + teksUcapNama(nm_poli.replace(/^\s*(klinik|poli)\s+/i, '').trim());
+  'Poli ' + teksUcapNama(nm_poli.replace(/^\s*(klinik|poli)\s+/i, '').trim()).replace(/\s*&\s*/g, ' dan ');
 
 // Kalimat panggilan. Kebijakan RS: pasien dipanggil dengan NAMA. Di poli yang namanya disamarkan,
 // nama tidak disebut (nomor urutnya dibunyikan TV dari klip lokal), hanya arah tujuan.

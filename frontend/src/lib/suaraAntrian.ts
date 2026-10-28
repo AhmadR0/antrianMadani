@@ -237,9 +237,9 @@ const tidur = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // Satu panggilan utuh: klip (notif + nomor), lalu ucapan nama kalau diberikan.
 // Resolve setelah semuanya selesai, atau lebih awal kalau dibatalkan oleh panggilan berikutnya.
-// Nama poli untuk diucapkan: "KLINIK BEDAH" -> "Poli Bedah".
+// Nama poli untuk diucapkan: "KLINIK BEDAH" -> "Poli Bedah", "KLINIK KULIT & KELAMIN" -> "Poli Kulit dan Kelamin".
 export const teksUcapPoli = (nm_poli: string) =>
-  'Poli ' + teksUcapNama(nm_poli.replace(/^\s*(klinik|poli)\s+/i, ''));
+  'Poli ' + teksUcapNama(nm_poli.replace(/^\s*(klinik|poli)\s+/i, '').trim()).replace(/\s*&\s*/g, ' dan ');
 
 const ULANG_PANGGILAN = 2;      // kalimat panggilan dibunyikan dua kali
 const JEDA_ULANG_MS = 2500;     // jeda antara ulangan
