@@ -5,6 +5,7 @@ import { sequelize } from '../../config/databases';
 // Yang tampil: resep yang SUDAH DIVALIDASI farmasi (resep_obat.tgl_perawatan/jam terisi; di Khanza
 // menu "Data Peresepan Obat" = kolom Tgl/Jam Validasi, status "Sudah Terlayani") dan belum diserahkan
 // (jam_penyerahan 00:00:00). Urut dari jam validasi paling awal. Resep yang belum diterima farmasi tidak tampil.
+// Resep dari IGD tidak ikut (obat IGD tidak diambil di loket); daftarnya di env FARMASI_KECUALI_POLI.
 // Racikan ditentukan dari resep_dokter_racikan, seperti aplikasi lama.
 
 export type ResepTunggu = {
@@ -32,6 +33,8 @@ type Baris = {
   racikan: number;
 };
 
+const KECUALI_POLI = (process.env.FARMASI_KECUALI_POLI ?? 'IGDK,IGD-P').split(',').map((k) => k.trim()).filter(Boolean);
+
 const SQL = `
   SELECT r.no_resep, r.jam_peresepan, r.jam, p.nm_pasien, pk.nm_poli,
          EXISTS(SELECT 1 FROM resep_dokter_racikan k WHERE k.no_resep = r.no_resep) AS racikan
@@ -45,6 +48,7 @@ const SQL = `
     AND r.tgl_perawatan <> '0000-00-00'
     AND r.jam <> '00:00:00'
     AND r.jam_penyerahan = '00:00:00'
+    AND g.kd_poli NOT IN (:kecuali)
   ORDER BY r.jam ASC, r.no_resep ASC
 `;
 
@@ -53,7 +57,7 @@ const tanggalLokal = (d: Date) =>
 
 export async function ambilAntrianFarmasi(tanggal?: string, now = new Date()): Promise<AntrianFarmasi> {
   const tgl = tanggal ?? tanggalLokal(now);
-  const baris = await sequelize.query<Baris>(SQL, { type: QueryTypes.SELECT, replacements: { tanggal: tgl } });
+  const baris = await sequelize.query<Baris>(SQL, { type: QueryTypes.SELECT, replacements: { tanggal: tgl, kecuali: KECUALI_POLI } });
 
   const nonRacikan: ResepTunggu[] = [];
   const racikan: ResepTunggu[] = [];

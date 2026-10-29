@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FlaskConical, Info, Pill, WifiOff } from 'lucide-react';
 import { bacaPengaturanTv, hapusPilihanLayar, simpanPengaturanTv, type PengaturanTv } from '../lib/pilihanLayar';
-import { samarkanNama } from '../lib/samarkanNama';
 import { bunyikanPanggilan, pemutarSuara, siapkanSuara } from '../lib/suaraAntrian';
 import { useAntrianEvents } from '../hooks/useAntrianEvents';
 import { useAntrianFarmasi } from '../hooks/useAntrianFarmasi';
@@ -21,7 +20,7 @@ import PapanFarmasi from '../components/display/PapanFarmasi';
 // - Panggilan: Khanza tombol "Penyerahan" -> antriapotek3 -> poller backend -> SSE kanal "FARMASI".
 //   Pasien dipanggil dengan NAMA LENGKAP, suara MP3 server: "Atas nama X, silakan ke loket penyerahan obat".
 // - Daftar tunggu: resep hari ini yang sudah divalidasi farmasi dan belum diserahkan, dua papan
-//   bersampingan (non racikan | racikan), satu daftar lurus urut jam validasi, nama disamarkan.
+//   bersampingan (non racikan | racikan), satu daftar lurus urut jam validasi, nama tampil utuh, tanpa IGD.
 //   Panggilan TIDAK mengikuti urutan (obat yang selesai duluan dipanggil duluan); nomor resep opsional per TV.
 
 const KD_FARMASI = 'FARMASI';
@@ -178,7 +177,7 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
                   {daftarSebelumnya.map((p) => (
                     <li key={p.id} className={`flex items-baseline gap-3 truncate font-semibold text-rs-tinta ${pengaturan.video ? 'text-xl' : 'text-2xl'}`}>
                       {tampilNomor && <span className="shrink-0 tabular-nums text-rs-tinta-lembut">{p.no_reg}</span>}
-                      <span className="truncate">{samarkanNama(p.nm_pasien)}</span>
+                      <span className="truncate">{p.nm_pasien}</span>
                       {p.nm_poli && <span className="shrink-0 text-base font-normal text-rs-tinta-lembut">{p.nm_poli}</span>}
                     </li>
                   ))}

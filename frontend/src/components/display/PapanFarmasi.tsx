@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { ResepTunggu } from '../../types/antrian';
-import { samarkanNama } from '../../lib/samarkanNama';
 
 type Props = {
   judul: string;
@@ -21,7 +20,7 @@ const WARNA = {
 
 // Papan satu jenis resep (non racikan / racikan): satu daftar lurus dari atas ke bawah,
 // urut jam validasi farmasi (yang paling dulu diterima paling atas). Tanpa kelompok/status.
-// Nama disamarkan (nama lengkap hanya saat dipanggil); nomor resep opsional (pengaturan TV).
+// Nama pasien tampil utuh (kebijakan farmasi); nomor resep opsional (pengaturan TV).
 export default function PapanFarmasi({ judul, Ikon, warna, daftar, perHalaman, tampilNomor }: Props) {
   const w = WARNA[warna];
   const jumlahHalaman = Math.max(1, Math.ceil(daftar.length / perHalaman));
@@ -58,7 +57,7 @@ export default function PapanFarmasi({ judul, Ikon, warna, daftar, perHalaman, t
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-2xl font-bold leading-tight text-rs-tinta">
-                  {r.nm_pasien && r.nm_pasien !== '-' ? samarkanNama(r.nm_pasien) : <span className="font-normal text-rs-tinta-lembut">Nama tidak tersedia</span>}
+                  {r.nm_pasien && r.nm_pasien !== '-' ? r.nm_pasien : <span className="font-normal text-rs-tinta-lembut">Nama tidak tersedia</span>}
                 </p>
                 <p className="truncate text-sm leading-tight text-rs-tinta-lembut">{r.nm_poli}</p>
               </div>
