@@ -40,7 +40,6 @@ export type ResepTunggu = {
   nm_pasien: string;      // nama asli; disamarkan di layar
   nm_poli: string;
   jam_peresepan: string;
-  disiapkan: boolean;     // sudah divalidasi apoteker
-  menit_menunggu: number;
+  jam_validasi: string;   // "07:40"; daftar diurut dari ini (hanya resep yang sudah divalidasi farmasi)
 };
 export type AntrianFarmasi = { tanggal: string; diperbarui: string; nonRacikan: ResepTunggu[]; racikan: ResepTunggu[] };

@@ -2,8 +2,9 @@ import { QueryTypes } from 'sequelize';
 import { sequelize } from '../../config/databases';
 
 // Daftar tunggu farmasi rawat jalan hari ini, dari tabel Khanza `resep_obat` (hanya SELECT).
-// Resep dianggap masih menunggu kalau belum diserahkan (jam_penyerahan 00:00:00).
-// Status "Sedang disiapkan" = resep sudah divalidasi apoteker (resep_obat.jam terisi); sebelum itu "Menunggu".
+// Yang tampil: resep yang SUDAH DIVALIDASI farmasi (resep_obat.tgl_perawatan/jam terisi; di Khanza
+// menu "Data Peresepan Obat" = kolom Tgl/Jam Validasi, status "Sudah Terlayani") dan belum diserahkan
+// (jam_penyerahan 00:00:00). Urut dari jam validasi paling awal. Resep yang belum diterima farmasi tidak tampil.
 // Racikan ditentukan dari resep_dokter_racikan, seperti aplikasi lama.
 
 export type ResepTunggu = {
@@ -12,8 +13,7 @@ export type ResepTunggu = {
   nm_pasien: string;      // nama ASLI; penyamaran dilakukan di layar
   nm_poli: string;
   jam_peresepan: string;  // "07:32"
-  disiapkan: boolean;     // sudah divalidasi
-  menit_menunggu: number; // sejak jam peresepan
+  jam_validasi: string;   // "07:40" (resep_obat.jam); dasar urutan daftar
 };
 
 export type AntrianFarmasi = {
@@ -42,17 +42,14 @@ const SQL = `
   WHERE r.status = 'ralan'
     AND r.tgl_peresepan = :tanggal
     AND r.jam_peresepan <> '00:00:00'
+    AND r.tgl_perawatan <> '0000-00-00'
+    AND r.jam <> '00:00:00'
     AND r.jam_penyerahan = '00:00:00'
-  ORDER BY r.jam_peresepan ASC
+  ORDER BY r.jam ASC, r.no_resep ASC
 `;
 
 const tanggalLokal = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-const menitSejak = (tanggal: string, jam: string, now: Date) => {
-  const t = new Date(`${tanggal}T${jam}`);
-  return Math.max(0, Math.round((now.getTime() - t.getTime()) / 60000));
-};
 
 export async function ambilAntrianFarmasi(tanggal?: string, now = new Date()): Promise<AntrianFarmasi> {
   const tgl = tanggal ?? tanggalLokal(now);
@@ -67,8 +64,7 @@ export async function ambilAntrianFarmasi(tanggal?: string, now = new Date()): P
       nm_pasien: (b.nm_pasien ?? '-').replace(/\s+/g, ' ').trim(),
       nm_poli: (b.nm_poli ?? '').replace(/\s+/g, ' ').trim(),
       jam_peresepan: b.jam_peresepan.slice(0, 5),
-      disiapkan: b.jam !== '00:00:00',
-      menit_menunggu: menitSejak(tgl, b.jam_peresepan, now),
+      jam_validasi: b.jam.slice(0, 5),
     };
     (Number(b.racikan) ? racikan : nonRacikan).push(item);
   }

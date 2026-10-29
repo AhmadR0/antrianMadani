@@ -20,15 +20,15 @@ import PapanFarmasi from '../components/display/PapanFarmasi';
 // Layar antrian FARMASI (loket penyerahan obat rawat jalan).
 // - Panggilan: Khanza tombol "Penyerahan" -> antriapotek3 -> poller backend -> SSE kanal "FARMASI".
 //   Pasien dipanggil dengan NAMA LENGKAP, suara MP3 server: "Atas nama X, silakan ke loket penyerahan obat".
-// - Daftar tunggu: resep hari ini yang belum diserahkan, non racikan & racikan, nama disamarkan,
-//   dikelompokkan "Sedang disiapkan" / "Menunggu". Panggilan TIDAK mengikuti urutan nomor (obat yang
-//   selesai duluan dipanggil duluan), jadi tidak ada posisi antrian; nomor resep opsional per TV.
+// - Daftar tunggu: resep hari ini yang sudah divalidasi farmasi dan belum diserahkan, dua papan
+//   bersampingan (non racikan | racikan), satu daftar lurus urut jam validasi, nama disamarkan.
+//   Panggilan TIDAK mengikuti urutan (obat yang selesai duluan dipanggil duluan); nomor resep opsional per TV.
 
 const KD_FARMASI = 'FARMASI';
 const DURASI_PANGGIL_MS = 8000;
 const JEDA_SETELAH_SUARA_MS = 1500;
 const JUMLAH_SEBELUMNYA = 6;          // disimpan 6, tampil 3 saat video menyala
-const KAPASITAS_PAPAN = 8;            // kartu per papan per halaman (2 kolom x 4 baris)
+const BARIS_PAPAN = 12;               // baris per papan per halaman
 const RUNNING_TEXT =
   'Pasien dipanggil dengan nama begitu obat selesai disiapkan, sehingga panggilan tidak selalu sesuai urutan nomor. ' +
   'Resep racikan memerlukan waktu lebih lama. Pastikan nama dan jumlah obat sesuai sebelum meninggalkan loket.';
@@ -199,10 +199,10 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
           )}
         </div>
 
-        {/* Kolom kanan: dua papan */}
-        <div className="flex min-h-0 flex-col gap-5">
-          <PapanFarmasi judul="Non Racikan" Ikon={Pill} warna="teal" daftar={data?.nonRacikan ?? []} kapasitas={KAPASITAS_PAPAN} tampilNomor={tampilNomor} />
-          <PapanFarmasi judul="Racikan" Ikon={FlaskConical} warna="sky" daftar={data?.racikan ?? []} kapasitas={KAPASITAS_PAPAN} tampilNomor={tampilNomor} />
+        {/* Kolom kanan: dua papan bersampingan */}
+        <div className="grid min-h-0 grid-cols-2 gap-5">
+          <PapanFarmasi judul="Non Racikan" Ikon={Pill} warna="teal" daftar={data?.nonRacikan ?? []} perHalaman={BARIS_PAPAN} tampilNomor={tampilNomor} />
+          <PapanFarmasi judul="Racikan" Ikon={FlaskConical} warna="sky" daftar={data?.racikan ?? []} perHalaman={BARIS_PAPAN} tampilNomor={tampilNomor} />
         </div>
       </div>
 
