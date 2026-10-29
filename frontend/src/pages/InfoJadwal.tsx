@@ -8,6 +8,7 @@ import RunningText from '../components/display/RunningText';
 import KartuJadwalPoli from '../components/info/KartuJadwalPoli';
 import { useInfoJadwal } from '../hooks/useInfoJadwal';
 import { hapusPilihanLayar } from '../lib/pilihanLayar';
+import { jamMenitRS } from '../lib/jamPraktik';
 
 // Layar jadwal dokter hari ini untuk semua poli. Kartu per poli, 6 per halaman (3 kolom x 2 baris), berganti otomatis.
 
@@ -56,7 +57,7 @@ export default function InfoJadwal() {
 
   const tampil = data ? data.poli.slice(halaman * PER_HALAMAN, (halaman + 1) * PER_HALAMAN) : [];
   const jamDiperbarui = data
-    ? new Date(data.diperbarui).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':')
+    ? jamMenitRS(new Date(data.diperbarui))
     : '';
 
   return (

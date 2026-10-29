@@ -8,6 +8,7 @@ import RunningText from '../components/display/RunningText';
 import KartuBangsal from '../components/info/KartuBangsal';
 import { useInfoBed, type BangsalBed, type HitunganBed } from '../hooks/useInfoBed';
 import { hapusPilihanLayar } from '../lib/pilihanLayar';
+import { jamMenitRS } from '../lib/jamPraktik';
 
 // Layar informasi tempat tidur: ringkasan rumah sakit di atas, kartu per bangsal di bawah.
 // Kalau bangsal lebih dari satu halaman, halaman berganti otomatis.
@@ -43,7 +44,7 @@ const tombolKembali = (e: KeyboardEvent) =>
 
 function Ringkasan({ r, diperbarui, gagal }: { r: HitunganBed; diperbarui: string; gagal: boolean }) {
   const persen = r.total === 0 ? 0 : Math.round(((r.total - r.kosong) / r.total) * 100);
-  const jam = new Date(diperbarui).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+  const jam = jamMenitRS(new Date(diperbarui));
   const Angka = ({ label, nilai, warna = 'text-rs-tinta' }: { label: string; nilai: number | string; warna?: string }) => (
     <div className="rounded-[24px] bg-rs-kartu px-8 py-5 shadow-sm border-2 border-rs-garis/70">
       <div className="text-base font-semibold uppercase tracking-widest text-rs-tinta-lembut">{label}</div>
