@@ -155,38 +155,40 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
       <div className="grid min-h-0 grid-cols-[2fr_3fr] gap-6">
         {/* Kolom kiri: terakhir dipanggil (+ video kalau aktif) */}
         <div className="flex min-h-0 flex-col gap-5">
-          <section className={`flex flex-col overflow-hidden rounded-[32px] bg-rs-kartu p-8 text-rs-tinta shadow-md ${pengaturan.video ? '' : 'flex-1'}`}>
-            <p className="text-xl font-semibold tracking-widest text-rs-tinta-lembut">{sekarang ? 'TERAKHIR DIPANGGIL' : 'PENYERAHAN OBAT'}</p>
-            <div className={`flex flex-col justify-center ${pengaturan.video ? 'py-4' : 'flex-1'}`}>
+          <section className={`relative flex flex-col overflow-hidden rounded-[32px] bg-gradient-to-br from-rs-primer via-teal-700 to-teal-900 p-8 text-white shadow-xl ${pengaturan.video ? '' : 'flex-1'}`}>
+            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-28 -left-16 h-80 w-80 rounded-full bg-black/10" />
+            <p className="relative text-xl font-semibold tracking-widest text-white/70">{sekarang ? 'TERAKHIR DIPANGGIL' : 'PENYERAHAN OBAT'}</p>
+            <div className={`relative flex flex-col justify-center ${pengaturan.video ? 'py-4' : 'flex-1'}`}>
               {sekarang ? (
                 <>
                   <p className={`line-clamp-3 font-bold leading-tight ${pengaturan.video ? 'text-5xl' : 'text-7xl'}`}>{sekarang.nm_pasien}</p>
-                  <p className="mt-3 text-2xl text-rs-tinta-lembut">
-                    {tampilNomor && <>Resep <span className="font-bold tabular-nums text-rs-tinta">{sekarang.no_reg}</span>{sekarang.nm_poli && ' · '}</>}
+                  <p className="mt-3 text-2xl text-white/80">
+                    {tampilNomor && <>Resep <span className="font-bold tabular-nums text-white">{sekarang.no_reg}</span>{sekarang.nm_poli && ' · '}</>}
                     {sekarang.nm_poli && <>dari {sekarang.nm_poli}</>}
                   </p>
                 </>
               ) : (
-                <p className="text-4xl text-rs-tinta-lembut">Menunggu panggilan</p>
+                <p className="text-4xl text-white/70">Menunggu panggilan</p>
               )}
             </div>
             {daftarSebelumnya.length > 0 && (
-              <div className="border-t border-rs-garis pt-4">
-                <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-rs-tinta-lembut">Sudah dipanggil</p>
+              <div className="relative border-t border-white/20 pt-4">
+                <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-white/60">Sudah dipanggil</p>
                 <ul className={`flex flex-col ${pengaturan.video ? 'gap-0.5' : 'gap-1.5'}`}>
                   {daftarSebelumnya.map((p) => (
-                    <li key={p.id} className={`flex items-baseline gap-3 truncate font-semibold text-rs-tinta ${pengaturan.video ? 'text-xl' : 'text-2xl'}`}>
-                      {tampilNomor && <span className="shrink-0 tabular-nums text-rs-tinta-lembut">{p.no_reg}</span>}
+                    <li key={p.id} className={`flex items-baseline gap-3 truncate font-semibold text-white ${pengaturan.video ? 'text-xl' : 'text-2xl'}`}>
+                      {tampilNomor && <span className="shrink-0 tabular-nums text-white/60">{p.no_reg}</span>}
                       <span className="truncate">{p.nm_pasien}</span>
-                      {p.nm_poli && <span className="shrink-0 text-base font-normal text-rs-tinta-lembut">{p.nm_poli}</span>}
+                      {p.nm_poli && <span className="shrink-0 text-base font-normal text-white/60">{p.nm_poli}</span>}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
             {!pengaturan.video && (
-              <div className="mt-5 flex items-start gap-3 rounded-2xl bg-rs-latar px-5 py-4 text-lg leading-snug text-rs-tinta-lembut">
-                <Info className="mt-0.5 h-6 w-6 shrink-0 text-rs-primer" strokeWidth={2.2} />
+              <div className="relative mt-5 flex items-start gap-3 rounded-2xl bg-white/10 px-5 py-4 text-lg leading-snug text-white/85">
+                <Info className="mt-0.5 h-6 w-6 shrink-0 text-white" strokeWidth={2.2} />
                 <p>Panggilan tidak selalu sesuai urutan nomor. Obat dipanggil begitu selesai disiapkan, resep racikan memerlukan waktu lebih lama.</p>
               </div>
             )}
@@ -198,8 +200,8 @@ function TampilanFarmasi({ pengaturan, dev, tanggalDev }: { pengaturan: Pengatur
           )}
         </div>
 
-        {/* Kolom kanan: dua papan bersampingan */}
-        <div className="grid min-h-0 grid-cols-2 gap-5">
+        {/* Kolom kanan (tampilan kedua): satu wadah ringan tanpa bayangan, dua papan dipisah garis */}
+        <div className="grid min-h-0 grid-cols-2 divide-x divide-rs-garis rounded-[32px] border border-rs-garis/80 bg-white/55 py-2">
           <PapanFarmasi judul="Non Racikan" Ikon={Pill} warna="teal" daftar={data?.nonRacikan ?? []} perHalaman={BARIS_PAPAN} tampilNomor={tampilNomor} />
           <PapanFarmasi judul="Racikan" Ikon={FlaskConical} warna="sky" daftar={data?.racikan ?? []} perHalaman={BARIS_PAPAN} tampilNomor={tampilNomor} />
         </div>
